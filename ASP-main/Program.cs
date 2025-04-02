@@ -12,8 +12,7 @@ namespace SPA_main
   {
     static void Main()
     {
-      string code = @" 
-procedure First { 
+      string code = @" procedure First { 
 x = 2; 
 z = 3; 
 call Second; } 
@@ -48,7 +47,7 @@ v = z;  }
       ast.PrintTree();
 
       // Process PQL query
-      string query = "stmt s; Select s such that Modifies(s, \"x\")";
+      string query = "variable s; Select s such that Modifies(6 , s)";
       Console.WriteLine("\nProcessing PQL query: " + query);
 
       PQLLexer pqlLexer = new PQLLexer(query);
