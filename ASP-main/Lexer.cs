@@ -5,7 +5,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace ASP_main
+namespace SPA_main
 {
     class Lexer
     {
