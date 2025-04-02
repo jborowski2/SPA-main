@@ -10,14 +10,16 @@ namespace SPA_main
     {
         public string Type { get; }
         public string Value { get; }
+        public int LineNumber { get; }
 
-        public Token(string type, string value)
+        public Token(string type, string value, int lineNumber)
         {
             Type = type;
             Value = value;
+            LineNumber = lineNumber;
         }
 
-        public override string ToString() => $"Token({Type}, {Value})";
+        public override string ToString() => $"Token({Type}, {Value}, Line {LineNumber})";
     }
 
 }

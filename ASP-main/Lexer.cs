@@ -35,15 +35,30 @@ namespace SPA_main
         private void Tokenize()
         {
             string pattern = string.Join("|", TokenSpecs.Select(spec => $"(?<{spec.Item1}>{spec.Item2})"));
+            int lineNumber = 0;
+            int positionInLine = 0;
+
             foreach (Match match in Regex.Matches(_code, pattern))
             {
+                // Oblicz numer linii na podstawie znaków nowej linii w dopasowanym tekście
+                var newlineCount = match.Value.Count(c => c == '\n');
+                if (newlineCount > 0)
+                {
+                    lineNumber += newlineCount;
+                    positionInLine = match.Value.Length - match.Value.LastIndexOf('\n') - 1;
+                }
+                else
+                {
+                    positionInLine += match.Value.Length;
+                }
+
                 foreach (var spec in TokenSpecs)
                 {
                     if (match.Groups[spec.Item1].Success)
                     {
                         if (spec.Item1 != "SKIP")
                         {
-                            _tokens.Add(new Token(spec.Item1, match.Value));
+                            _tokens.Add(new Token(spec.Item1, match.Value, lineNumber));
                         }
                         break;
                     }

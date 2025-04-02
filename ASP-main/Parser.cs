@@ -65,25 +65,27 @@ namespace SPA_main
 
         private ASTNode ParseWhile()
         {
+            int lineNumber = CurrentToken.LineNumber;
             Eat("WHILE");
             string varName = CurrentToken.Value;
             Eat("NAME");
             Eat("LBRACE");
             ASTNode stmtLst = ParseStmtLst();
             Eat("RBRACE");
-            var whileNode = new ASTNode("while", varName);
+            var whileNode = new ASTNode("while", varName, lineNumber);
             whileNode.AddChild(stmtLst);
             return whileNode;
         }
 
         private ASTNode ParseAssign()
         {
+            int lineNumber = CurrentToken.LineNumber;
             string varName = CurrentToken.Value;
             Eat("NAME");
             Eat("ASSIGN");
             ASTNode exprNode = ParseExpr();
             Eat("SEMICOLON");
-            var assignNode = new ASTNode("assign", varName);
+            var assignNode = new ASTNode("assign", varName, lineNumber);
             assignNode.AddChild(exprNode);
             return assignNode;
         }
