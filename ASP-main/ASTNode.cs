@@ -13,7 +13,7 @@ namespace SPA_main
         public int? LineNumber { get; }
         public List<ASTNode> Children { get; } = new List<ASTNode>();
 
-        public ASTNode(string type, string value = null, int ? lineNumber = null)
+        public ASTNode(string type, string value = null, int? lineNumber = null)
         {
             Type = type;
             Value = value;
@@ -26,10 +26,43 @@ namespace SPA_main
         }
         public void PrintTree(int level = 0)
         {
-            Console.WriteLine(new string(' ', level * 2) + $"{Type}: {Value}");
-            foreach (var child in Children)
+            string indent = new string(' ', level * 2);
+            switch (Type)
             {
-                child.PrintTree(level + 1);
+                case "procedure":
+                    Console.WriteLine(indent + $"PROCEDURE {Value}");
+                    foreach (var child in Children)
+                        child.PrintTree(level + 1);
+                    break;
+
+                case "if":
+                    Console.WriteLine(indent + $"IF ({Value})");
+                    Console.WriteLine(indent + "  THEN:");
+                    if (Children.Count > 0) Children[0].PrintTree(level + 2);
+                    Console.WriteLine(indent + "  ELSE:");
+                    if (Children.Count > 1) Children[1].PrintTree(level + 2);
+                    break;
+
+                case "while":
+                    Console.WriteLine(indent + $"WHILE ({Value})");
+                    if (Children.Count > 0) Children[0].PrintTree(level + 1);
+                    break;
+
+                case "call":
+                    Console.WriteLine(indent + $"CALL {Value}");
+                    break;
+
+                case "assign":
+                    Console.WriteLine(indent + $"ASSIGN {Value}");
+                    foreach (var child in Children)
+                        child.PrintTree(level + 1);
+                    break;
+
+                default:
+                    Console.WriteLine(indent + $"{Type}: {Value}");
+                    foreach (var child in Children)
+                        child.PrintTree(level + 1);
+                    break;
             }
         }
 

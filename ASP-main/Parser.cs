@@ -57,12 +57,36 @@ namespace SPA_main
         {
             if (CurrentToken.Type == "WHILE")
                 return ParseWhile();
+            else if (CurrentToken.Type == "IF")
+                return ParseIf();
+            else if (CurrentToken.Type == "CALL")
+                return ParseCall();
+
             else if (CurrentToken.Type == "NAME")
                 return ParseAssign();
             else
                 throw new Exception($"Unexpected statement: {CurrentToken}");
         }
+        private ASTNode ParseIf()
+        {
+            int lineNumber = CurrentToken.LineNumber;
+            Eat("IF");
+            string varName = CurrentToken.Value;
+            Eat("NAME");
+            Eat("THEN");
+            Eat("LBRACE");
+            ASTNode thenStmtLst = ParseStmtLst();
+            Eat("RBRACE");
+            Eat("ELSE");
+            Eat("LBRACE");
+            ASTNode elseStmtLst = ParseStmtLst();
+            Eat("RBRACE");
 
+            var ifNode = new ASTNode("if", varName, lineNumber);
+            ifNode.AddChild(thenStmtLst);
+            ifNode.AddChild(elseStmtLst);
+            return ifNode;
+        }
         private ASTNode ParseWhile()
         {
             int lineNumber = CurrentToken.LineNumber;
@@ -92,48 +116,72 @@ namespace SPA_main
 
         private ASTNode ParseExpr()
         {
-            var node = new ASTNode("expr");
+            var node = ParseTerm();
 
+            while (CurrentToken != null && (CurrentToken.Type == "PLUS" || CurrentToken.Type == "MINUS"))
+            {
+                string op = CurrentToken.Type;
+                Eat(op);
+                var right = ParseTerm();
+                var opNode = new ASTNode(op == "PLUS" ? "plus_op" : "minus_op", op);
+                opNode.AddChild(node);
+                opNode.AddChild(right);
+                node = opNode;
+            }
+
+            return node;
+        }
+        private ASTNode ParseTerm()
+        {
+            var node = ParseFactor();
+
+            while (CurrentToken != null && CurrentToken.Type == "MULTIPLY")
+            {
+                Eat("MULTIPLY");
+                var right = ParseFactor();
+                var opNode = new ASTNode("multiply_op", "*");
+                opNode.AddChild(node);
+                opNode.AddChild(right);
+                node = opNode;
+            }
+
+            return node;
+        }
+
+        private ASTNode ParseFactor()
+        {
             if (CurrentToken.Type == "NAME")
             {
                 string term = CurrentToken.Value;
                 Eat("NAME");
-                node.AddChild(new ASTNode("var", term));
+                return new ASTNode("var", term);
             }
             else if (CurrentToken.Type == "NUMBER")
             {
                 string term = CurrentToken.Value;
                 Eat("NUMBER");
-                node.AddChild(new ASTNode("const", term));
+                return new ASTNode("const", term);
+            }
+            else if (CurrentToken.Type == "LBRACE")
+            {
+                Eat("LBRACE");
+                var node = ParseExpr();
+                Eat("RBRACE");
+                return node;
             }
             else
             {
-                throw new Exception($"Unexpected token in expression: {CurrentToken}");
+                throw new Exception($"Unexpected token in factor: {CurrentToken}");
             }
-
-            while (CurrentToken != null && CurrentToken.Type == "PLUS")
-            {
-                Eat("PLUS");
-
-                if (CurrentToken.Type == "NAME")
-                {
-                    string term = CurrentToken.Value;
-                    Eat("NAME");
-                    node.AddChild(new ASTNode("var", term));
-                }
-                else if (CurrentToken.Type == "NUMBER")
-                {
-                    string term = CurrentToken.Value;
-                    Eat("NUMBER");
-                    node.AddChild(new ASTNode("const", term));
-                }
-                else
-                {
-                    throw new Exception($"Unexpected token after PLUS: {CurrentToken}");
-                }
-            }
-
-            return node;
+        }
+        private ASTNode ParseCall()
+        {
+            int lineNumber = CurrentToken.LineNumber;
+            Eat("CALL");
+            string procName = CurrentToken.Value;
+            Eat("NAME");
+            Eat("SEMICOLON");
+            return new ASTNode("call", procName, lineNumber);
         }
     }
 }

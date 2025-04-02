@@ -12,7 +12,8 @@ namespace SPA_main
   {
     static void Main()
     {
-      string code = @"procedure First { 
+      string code = @" 
+procedure First { 
 x = 2; 
 z = 3; 
 call Second; } 
@@ -37,7 +38,8 @@ z = 1; }
   x = x * y + z; } 
 procedure Third { 
 z = 5;   
-v = z;  } ";
+v = z;  } 
+";
 
       Lexer lexer = new Lexer(code);
       List<Token> tokens = lexer.GetTokens();
