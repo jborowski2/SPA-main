@@ -10,12 +10,14 @@ namespace SPA_main
     {
         public string Type { get; }
         public string Value { get; }
+        public int? LineNumber { get; }
         public List<ASTNode> Children { get; } = new List<ASTNode>();
 
-        public ASTNode(string type, string value = null)
+        public ASTNode(string type, string value = null, int ? lineNumber = null)
         {
             Type = type;
             Value = value;
+            LineNumber = lineNumber;
         }
 
         public void AddChild(ASTNode child)
