@@ -12,42 +12,17 @@ namespace SPA_main
   {
     static void Main()
     {
-      string code = @" procedure First { 
-x = 2; 
-z = 3; 
-call Second; } 
-procedure Second { 
-  x = 0;  
-  i = 5; 
-  while i  { 
-   
-x = x + 2 * y; 
-   
-   
-call Third; 
-i = i  - 1; } 
-  if x then { 
-   
-x = x + 1; } 
-else { 
-  
-z = 1; } 
-  z = z + x + i; 
-  y = z + 2;  
-  x = x * y + z; } 
-procedure Third { 
-z = 5;   
-v = z;  } 
-";
 
-      Lexer lexer = new Lexer(code);
+            string filePath = "code.txt";
+            string code = File.ReadAllText(filePath);
+            Lexer lexer = new Lexer(code);
       List<Token> tokens = lexer.GetTokens();
       Parser parser = new Parser(tokens);
       ASTNode ast = parser.ParseProgram();
       ast.PrintTree();
 
       // Process PQL query
-      string query = "variable s; Select s such that Modifies(6 , s)";
+      string query = "assign a; Select a such that Modifies(a ,\"t\" )";
       Console.WriteLine("\nProcessing PQL query: " + query);
 
       PQLLexer pqlLexer = new PQLLexer(query);
@@ -66,10 +41,16 @@ v = z;  }
       SPAAnalyzer analyzer = new SPAAnalyzer(ast);
       var results = analyzer.Analyze(pqlQuery);
       Console.WriteLine("\nResults:");
-      foreach (var res in results)
-      {
-        Console.WriteLine(res);
-      }
-    }
+            for (int i = 0; i < results.Count; i++)
+            {
+                Console.Write(results[i]);
+
+                // Dodaj przecinek i spację jeśli to nie jest ostatni element
+                if (i < results.Count - 1)
+                {
+                    Console.Write(", ");
+                }
+            }
+        }
   }
 }
