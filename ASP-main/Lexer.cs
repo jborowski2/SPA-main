@@ -41,33 +41,45 @@ namespace SPA_main
         private void Tokenize()
         {
             string pattern = string.Join("|", TokenSpecs.Select(spec => $"(?<{spec.Item1}>{spec.Item2})"));
-            int lineNumber = 0;
-            int positionInLine = 0;
+            string[] allLines = _code.Split('\n');
+            int lineNumber = 1;
 
-            foreach (Match match in Regex.Matches(_code, pattern))
+            for (int i = 0; i < allLines.Length; i++)
             {
-                // Oblicz numer linii na podstawie znaków nowej linii w dopasowanym tekście
-                var newlineCount = match.Value.Count(c => c == '\n');
-                if (newlineCount > 0)
+                string line = allLines[i].Trim();
+
+                // Całkowicie pomijamy puste linie
+                if (string.IsNullOrWhiteSpace(line))
                 {
-                    lineNumber += newlineCount;
-                    positionInLine = match.Value.Length - match.Value.LastIndexOf('\n') - 1;
-                }
-                else
-                {
-                    positionInLine += match.Value.Length;
+                    continue;
                 }
 
-                foreach (var spec in TokenSpecs)
+                // Sprawdzamy czy to linia z deklaracją procedury
+                bool isProcedureLine = line.StartsWith("procedure") && line.EndsWith("{") ||
+                           (line == "else{") ||
+                           (line == "else {");
+
+                // Tokenizujemy zawartość linii
+                foreach (Match match in Regex.Matches(line, pattern))
                 {
-                    if (match.Groups[spec.Item1].Success)
+                    foreach (var spec in TokenSpecs)
                     {
-                        if (spec.Item1 != "SKIP")
+                        if (match.Groups[spec.Item1].Success)
                         {
-                            _tokens.Add(new Token(spec.Item1, match.Value, lineNumber));
+                            if (spec.Item1 != "SKIP")
+                            {
+                                _tokens.Add(new Token(spec.Item1, match.Value, lineNumber));
+                            }
+                            break;
                         }
-                        break;
                     }
+                }
+
+                // Inkrementujemy numer linii tylko jeśli to nie jest linia z procedure
+                // i nie jest to pusta linia (już sprawdzone na początku)
+                if (!isProcedureLine)
+                {
+                    lineNumber++;
                 }
             }
         }

@@ -12,41 +12,9 @@ namespace SPA_main
   {
     static void Main()
     {
-      string code = @"procedure Circle { 
- t = 1; 
- a = t + 10; 
- d = t * a + 2; 
- call Triangle; 
- b = t + a; 
- call Hexagon; 
- b = t + a; 
- if t then { 
-       
-k = a - d; 
-       while c { 
-          d = d + t; 
-          c = d + 1; }
-          a = d + t; }
-          else { 
-       a = d + t; 
-       call Hexagon; 
-       c = c - 1; } 
- call Rectangle; } 
-procedure Rectangle { 
- while c  { 
-       t = d + 3 * a + c; 
-       call Triangle; 
-       c = c + 20; } 
- d = t; } 
-procedure Triangle { 
- while d { 
-  if t then { 
-    d = t + 2; } 
-  else {
-    a = t * a + d + k * b; }} 
-c = t + k + d; } 
-";
 
+      string filePath = "code.txt";
+      string code = File.ReadAllText(filePath);
       Lexer lexer = new Lexer(code);
       List<Token> tokens = lexer.GetTokens();
       Parser parser = new Parser(tokens);
@@ -54,7 +22,7 @@ c = t + k + d; }
       ast.PrintTree();
 
       // Process PQL query
-      string query = "stmt s; Select s such that Parent (s, 12) ";
+      string query = "assign a; Select a such that Modifies(a ,\"t\" )";
       Console.WriteLine("\nProcessing PQL query: " + query);
 
       PQLLexer pqlLexer = new PQLLexer(query);
@@ -73,9 +41,15 @@ c = t + k + d; }
       SPAAnalyzer analyzer = new SPAAnalyzer(ast);
       var results = analyzer.Analyze(pqlQuery);
       Console.WriteLine("\nResults:");
-      foreach (var res in results)
+      for (int i = 0; i < results.Count; i++)
       {
-        Console.WriteLine(res);
+        Console.Write(results[i]);
+
+        // Dodaj przecinek i spację jeśli to nie jest ostatni element
+        if (i < results.Count - 1)
+        {
+          Console.Write(", ");
+        }
       }
     }
   }

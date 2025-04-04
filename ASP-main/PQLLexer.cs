@@ -11,17 +11,22 @@ namespace ASP_main
     class PQLLexer
     {
         private static readonly (string, string)[] TokenSpecs =
-        {
+    {
         ("SELECT", "Select"),
         ("SUCH_THAT", "such that"),
         ("MODIFIES", "Modifies"),
         ("USES", "Uses"),
+        ("FOLLOWS", "Follows"),
+        ("FOLLOWS_STAR", "Follows\\*"),
+        ("PARENT", "Parent"),
+        ("PARENT_STAR", "Parent\\*"),
         ("PARENT", "Parent(?!\\*)"),
         ("PARENT_STAR", "Parent\\*"),
         ("PATTERN", "pattern"),
         ("WITH", "with"),
         ("AND", "and"),
         ("STMT", "stmt"),
+        ("ASSIGN", "assign"),
         ("VARIABLE", "variable"),
         ("PROCEDURE", "procedure"),
         ("CONSTANT", "constant"),
@@ -34,6 +39,7 @@ namespace ASP_main
         ("LPAREN", "\\("),
         ("RPAREN", "\\)"),
         ("UNDERSCORE", "_"),
+        ("EQUALS", "="),
         ("SKIP", "[ \\t\\n]+")
     };
 
