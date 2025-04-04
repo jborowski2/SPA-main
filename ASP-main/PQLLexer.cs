@@ -16,6 +16,8 @@ namespace ASP_main
         ("SUCH_THAT", "such that"),
         ("MODIFIES", "Modifies"),
         ("USES", "Uses"),
+        ("PARENT", "Parent(?!\\*)"),
+        ("PARENT_STAR", "Parent\\*"),
         ("PATTERN", "pattern"),
         ("WITH", "with"),
         ("AND", "and"),
@@ -42,9 +44,18 @@ namespace ASP_main
         {
             _query = query;
             Tokenize();
+            PrintTokens();
         }
 
-
+        private void PrintTokens()
+        {
+            Console.WriteLine("=== Tokens ===");
+            foreach (var token in _tokens)
+            {
+                Console.WriteLine(token.ToString());
+            }
+            Console.WriteLine("==============");
+        }
         private void Tokenize()
         {
             string pattern = string.Join("|", TokenSpecs.Select(spec => $"(?<{spec.Item1}>{spec.Item2})"));

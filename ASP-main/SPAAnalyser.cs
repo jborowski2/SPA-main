@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -9,22 +10,22 @@ using System.Xml.Linq;
 namespace ASP_main
 {
     class SPAAnalyzer
-{
-    private readonly ASTNode _ast;
-
-    public SPAAnalyzer(ASTNode ast)
     {
-        _ast = ast;
-    }
+        private readonly ASTNode _ast;
 
-    public List<string> Analyze(PQLQuery query)
-    {
-        var results = new List<string>();
-
-        foreach (var relation in query.Relations)
+        public SPAAnalyzer(ASTNode ast)
         {
-            if (relation.Type.Equals("Modifies", StringComparison.OrdinalIgnoreCase))
+            _ast = ast;
+        }
+
+        public List<string> Analyze(PQLQuery query)
+        {
+            var results = new List<string>();
+
+            foreach (var relation in query.Relations)
             {
+                if (relation.Type.Equals("Modifies", StringComparison.OrdinalIgnoreCase))
+                {
 
                     if (int.TryParse(relation.Arg1, out int lineNumber))
                     {
@@ -44,10 +45,63 @@ namespace ASP_main
                         results.AddRange(FindLinesModifyingVariable(varName).Select(x => x.ToString()));
                     }
                 }
-        }
+                else if (relation.Type.Equals("Parent", StringComparison.OrdinalIgnoreCase) ||
+               relation.Type.Equals("Parent*", StringComparison.OrdinalIgnoreCase))
+                {
+                    bool isTransitive = relation.Type.EndsWith("*", StringComparison.OrdinalIgnoreCase);
 
-        return results.Distinct().ToList(); 
-    }
+                    // Format: Parent(s, 10) - znajdź s takie że s jest rodzicem 10
+                    if (int.TryParse(relation.Arg2, out int childLine))
+                    {
+                        var childNode = FindNodeByLine(_ast, childLine);
+                        if (childNode != null)
+                        {
+                            if (isTransitive)
+                            {
+                                // Parent* - wszystkie poziomy rodziców
+                                var parents = FindAllParents(childNode.LineNumber.Value);
+                                results.AddRange(parents
+                                    .Where(p => p.LineNumber.HasValue)
+                                    .Select(p => p.LineNumber.ToString()));
+                            }
+                            else
+                            {
+                                // Parent - tylko bezpośredni rodzic
+                                if (childNode.Parent != null && childNode.Parent.LineNumber.HasValue)
+                                {
+                                    results.Add(childNode.Parent.LineNumber.ToString());
+                                }
+                            }
+                        }
+                    }
+
+                    // Format: Parent(8, s) - znajdź s takie że 8 jest rodzicem s
+                    if (int.TryParse(relation.Arg1, out int parentLine))
+                    {
+                        var parentNode = FindNodeByLine(_ast, parentLine);
+                        if (parentNode != null)
+                        {
+                            if (isTransitive)
+                            {
+                                // Parent* - wszystkie poziomy dzieci
+                                results.AddRange(FindAllChildren(parentNode)
+                                    .Where(c => c.LineNumber.HasValue)
+                                    .Select(c => c.LineNumber.ToString()));
+                            }
+                            else
+                            {
+                                // Parent - tylko bezpośrednie dzieci
+                                results.AddRange(parentNode.Children
+                                    .Where(c => c.LineNumber.HasValue)
+                                    .Select(c => c.LineNumber.ToString()));
+                            }
+                        }
+                    }
+                }
+            }
+
+            return results.Distinct().ToList();
+        }
 
         private string FindModifiedVariableInLine(int lineNumber)
         {
@@ -75,7 +129,16 @@ namespace ASP_main
             return null;
         }
 
-     
+        private List<ASTNode> FindAllChildren(ASTNode node)
+        {
+            var children = new List<ASTNode>();
+            foreach (var child in node.Children)
+            {
+                children.Add(child);
+                children.AddRange(FindAllChildren(child));
+            }
+            return children;
+        }
 
         private List<int> FindLinesModifyingVariable(string varName)
         {
@@ -86,7 +149,7 @@ namespace ASP_main
 
         private void FindAssignNodesForVariable(ASTNode node, string varName, List<int> lines)
         {
-            if (DoesModify( node, varName))
+            if (DoesModify(node, varName))
             {
                 lines.Add(node.LineNumber.Value);
             }
@@ -97,31 +160,95 @@ namespace ASP_main
             }
         }
 
-  
-    private bool DoesModify(ASTNode node, string varName)
+
+        private bool DoesModify(ASTNode node, string varName)
         {
             return (node.Type == "assign" && node.Value == varName && node.LineNumber.HasValue);
         }
 
 
-    private bool IsModified(ASTNode node, int targetLineNumber)
+        private bool IsModified(ASTNode node, int targetLineNumber)
         {
             return (node.Type == "assign" && node.LineNumber.Value == targetLineNumber);
         }
 
 
-        private bool DoesFollow(ASTNode node1, ASTNode model)
+        private bool DoesFollow(ASTNode node1, ASTNode node2)
         {
-            return true;
+            return node1 != null && node1.Follows == node2;
+        }
+        public bool DoesFollowStar(ASTNode node1, ASTNode node2)
+        {
+            var current = node1;
+            while (current != null)
+            {
+                if (current.Follows == node2) return true;
+                current = current.Follows;
+            }
+            return false;
+        }
+        private bool IsParent(ASTNode child, ASTNode parent)
+        {
+            return child != null && child.Parent == parent;
+        }
+        public bool IsParentStar(ASTNode child, ASTNode parent)
+        {
+            var current = parent;
+            while (current != null)
+            {
+                if (current.Parent == child)
+                    return true;
+                current = current.Parent;
+            }
+            return false;
+        }
+        public List<ASTNode> FindAllParents(int lineNumber)
+        {
+            var node = FindNodeByLine(_ast, lineNumber);
+            var parents = new List<ASTNode>();
+
+            while (node?.Parent != null)
+            {
+                parents.Add(node.Parent);
+                node = node.Parent;
+            }
+
+            return parents;
+        }
+        public List<ASTNode> FindAllFollowing(int lineNumber)
+        {
+            var node = FindNodeByLine(_ast, lineNumber);
+            var following = new List<ASTNode>();
+
+            while (node?.Follows != null)
+            {
+                following.Add(node.Follows);
+                node = node.Follows;
+            }
+
+            return following;
         }
 
-    private bool isParent()
+        public ASTNode FindNodeByLine(ASTNode node, int targetLineNumber)
         {
-            return true;
+            if (node.LineNumber.HasValue && node.LineNumber.Value == targetLineNumber)
+            {
+                return node;
+            }
 
+            foreach (var child in node.Children)
+            {
+                var foundNode = FindNodeByLine(child, targetLineNumber);
+                if (foundNode != null)
+                {
+                    return foundNode;
+                }
+            }
+
+            return new ASTNode("brak ", "czegokolwiek", -1);
         }
 
-    private bool DoesUse()
+        private bool DoesUse()
         {
             return true;
         }
@@ -132,17 +259,17 @@ namespace ASP_main
             // Console.WriteLine(" ");
             // if (node.LineNumber.HasValue) Console.WriteLine(node.LineNumber.Value);
             // Console.WriteLine("\n");
-          
-            if (DoesModify(node, varName))
-        {
-            results.Add(node.LineNumber.Value);
-                
-        }
 
-        foreach (var child in node.Children)
-        {
-            FindModifiesInNode(child, varName, results);
+            if (DoesModify(node, varName))
+            {
+                results.Add(node.LineNumber.Value);
+
+            }
+
+            foreach (var child in node.Children)
+            {
+                FindModifiesInNode(child, varName, results);
+            }
         }
     }
-}
 }

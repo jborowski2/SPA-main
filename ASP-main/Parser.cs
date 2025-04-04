@@ -48,8 +48,17 @@ namespace SPA_main
         private ASTNode ParseStmtLst()
         {
             var node = new ASTNode("stmtLst");
+            ASTNode previousStmt = null;
             while (CurrentToken != null && CurrentToken.Type != "RBRACE")
-                node.AddChild(ParseStmt());
+            {
+                var stmt = ParseStmt();
+                node.AddChild(stmt);
+                if (previousStmt != null)
+                {
+                    previousStmt.SetFollows(stmt);
+                }
+                previousStmt = stmt;
+            }
             return node;
         }
 

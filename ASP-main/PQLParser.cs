@@ -80,7 +80,17 @@ namespace ASP_main
         private Relation ParseRelation()
         {
             var relationType = CurrentToken.Value;
-            Eat(relationType.ToUpper()); // e.g., MODIFIES, USES, etc.
+
+            if (CurrentToken.Type == "PARENT_STAR")
+            {
+                relationType = "Parent*";
+                Eat("PARENT_STAR"); // Zmieniamy to z CurrentToken.Value.ToUpper()
+            }
+            else
+            {
+                relationType = CurrentToken.Value;
+                Eat(CurrentToken.Type); // Używamy Type zamiast Value.ToUpper()
+            }
             Eat("LPAREN");
 
             var arg1 = CurrentToken.Value;
@@ -102,6 +112,7 @@ namespace ASP_main
             }
 
             Eat("RPAREN");
+
 
             return new Relation(relationType, arg1, arg2);
         }
