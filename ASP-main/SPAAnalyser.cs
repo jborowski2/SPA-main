@@ -61,10 +61,71 @@ namespace ASP_main
                         results.AddRange(FindLinesUsingVariable(varName).Select(x => x.ToString()));
                     }
                 }
+                else if (relation.Type.Equals("Parent", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (int.TryParse(relation.Arg2, out int childLine))
+                    {
+                        
+                        results.Add(FindDirectParents(childLine).ToString());
+                    }
+                }
+                else if (relation.Type.Equals("Parent*", StringComparison.OrdinalIgnoreCase))
+                {
+                  
+                    if (int.TryParse(relation.Arg2, out int childLine))
+                    {
+                        results.AddRange(FindAllParentsTransitive(childLine).Select(x => x.ToString()));
+                    }
+                }
+                else if (relation.Type.Equals("Follows", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (int.TryParse(relation.Arg2, out int followsLine))
+                    {
+
+                        results.Add(FindDirectFollows(followsLine).ToString());
+                    }
+                }
+                else if (relation.Type.Equals("Follows*", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (int.TryParse(relation.Arg2, out int followsLine))
+                    {
+                        results.AddRange(FindAllFollowsTransitive(followsLine).Select(x => x.ToString()));
+                    }
+                }
             }
             if (results.Count == 0)
             { results.Add("None"); }
             return results.Distinct().ToList();
+        }
+
+        private IEnumerable<object> FindAllFollowsTransitive(int followsLine)
+        {
+            ASTNode followed = FindNodeByLine(_ast, followsLine);
+            List<object> results = new List<object>();
+            while (followed != null)
+            {
+                if (followed != null && followed.Follows != null)
+                {
+                    results.Add(followed.Follows.LineNumber.Value);
+                    followed = followed.Follows;
+                }
+                else
+                {
+                    followed = null;
+                }
+            }
+            
+            return results;
+        }
+
+        private object FindDirectFollows(int followsLine)
+        {
+            ASTNode followed = FindNodeByLine(_ast, followsLine);
+            if (followed != null && followed.Follows!= null)
+            {
+                return followed.Follows.LineNumber.Value;
+            }
+            return "none";
         }
 
         private List<string> FindVariablesUsedInLine(int lineNumber)
@@ -73,7 +134,28 @@ namespace ASP_main
             FindVariablesUsedInNode(_ast, lineNumber, variables);
             return variables.Distinct().ToList();
         }
+        public int FindDirectParents(int childLine)
+        {
+            var childNode = FindNodeByLine(_ast, childLine);
+            if (childNode?.Parent?.Parent != null && (childNode.Parent.Parent.Type == "while" || childNode.Parent.Parent.Type == "if"))
+            {
+                return childNode.Parent.Parent.LineNumber.Value;
+            }
+            return -1;
+        }
+        public List<int> FindAllParentsTransitive(int childLine)
+        {
+            var parents = new List<int>();
+            var childNode = FindNodeByLine(_ast, childLine);
 
+            while (childNode?.Parent.Parent != null && (childNode.Parent.Parent.Type == "while" || childNode.Parent.Parent.Type == "if"))
+            {
+                parents.Add(childNode.Parent.Parent.LineNumber.Value);
+                childNode = childNode.Parent.Parent;
+            }
+
+            return parents;
+        }
         private void FindVariablesUsedInNode(ASTNode node, int targetLineNumber, List<string> variables)
         {
             if (node.LineNumber.HasValue && node.LineNumber.Value == targetLineNumber)
@@ -273,6 +355,7 @@ namespace ASP_main
             }
             return false;
         }
+
         public List<ASTNode> FindAllParents(int lineNumber)
         {
             var node = FindNodeByLine(_ast, lineNumber);
@@ -286,19 +369,6 @@ namespace ASP_main
 
             return parents;
         }
-        public List<ASTNode> FindAllFollowing(int lineNumber)
-        {
-            var node = FindNodeByLine(_ast, lineNumber);
-            var following = new List<ASTNode>();
-
-            while (node?.Follows != null)
-            {
-                following.Add(node.Follows);
-                node = node.Follows;
-            }
-
-            return following;
-        }
 
         public ASTNode FindNodeByLine(ASTNode node, int targetLineNumber)
         {
@@ -310,13 +380,13 @@ namespace ASP_main
             foreach (var child in node.Children)
             {
                 var foundNode = FindNodeByLine(child, targetLineNumber);
-                if (foundNode != null)
+                if (foundNode != null) 
                 {
-                    return foundNode;
+                    return foundNode; 
                 }
             }
 
-            return new ASTNode("brak ", "czegokolwiek", -1);
+            return null; 
         }
 
 

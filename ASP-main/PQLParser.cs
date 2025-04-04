@@ -156,11 +156,18 @@ namespace ASP_main
                 relationType = "Parent*";
                 Eat("PARENT_STAR"); // Zmieniamy to z CurrentToken.Value.ToUpper()
             }
+            else if (CurrentToken.Type == "FOLLOWS_STAR")
+            {
+                relationType = "Follows*";
+                Eat("FOLLOWS_STAR");
+            }
             else
             {
                 relationType = CurrentToken.Value;
                 Eat(CurrentToken.Type); // Używamy Type zamiast Value.ToUpper()
             }
+          
+            
             Eat("LPAREN");
 
             var arg1 = CurrentToken.Value;

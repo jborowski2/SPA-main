@@ -1,0 +1,20 @@
+procedure Circle { 
+ t = 1;
+ a = t + 10; 
+ d = t * a + 2; 
+ call Triangle; 
+ b = t + a; 
+ call Hexagon; 
+ b = t + a; 
+ if t then { 
+k = a - d; 
+       while c { 
+       d = d + t; 
+       c = d + 1; } 
+        a = d + t; } 
+else { 
+       a = d + t; 
+       call Hexagon; 
+       c = c - 1; } 
+ call Rectangle; } 
+

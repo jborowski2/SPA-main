@@ -79,6 +79,7 @@ namespace SPA_main
                     break;
             }
         }
+
         public override string ToString() => $"ASTNode({Type}, {Value}, [{string.Join(", ", Children)}])";
     }
 }

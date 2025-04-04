@@ -22,7 +22,7 @@ namespace SPA_main
       ast.PrintTree();
 
       // Process PQL query
-      string query = "assign a; Select a such that Modifies(a ,\"t\" )";
+      string query = "stmt s; Select s such that Follows* (s, 1)";
       Console.WriteLine("\nProcessing PQL query: " + query);
 
       PQLLexer pqlLexer = new PQLLexer(query);
