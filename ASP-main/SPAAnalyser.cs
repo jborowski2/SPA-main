@@ -20,10 +20,22 @@ namespace ASP_main
     public List<string> Analyze(PQLQuery query)
     {
         var results = new List<string>();
+        var statementSubstitutions = new Dictionary<string, int>();
 
-        foreach (var relation in query.Relations)
+            foreach (var relation in query.Relations)
         {
-            if (relation.Type.Equals("Modifies", StringComparison.OrdinalIgnoreCase))
+                foreach (var withClause in query.WithClauses)
+                {
+                    if (withClause.Left.Attribute == "stmt#" && withClause.Right.IsValue)
+                    {
+                        if (int.TryParse(withClause.Right.Value, out int lineNumber))
+                        {
+                            statementSubstitutions[withClause.Left.Reference] = lineNumber;
+                        }
+                    }
+                }
+
+                if (relation.Type.Equals("Modifies", StringComparison.OrdinalIgnoreCase))
             {
 
                     if (int.TryParse(relation.Arg1, out int lineNumber))

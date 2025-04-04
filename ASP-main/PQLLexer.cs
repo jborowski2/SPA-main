@@ -28,6 +28,8 @@ namespace ASP_main
         ("VARIABLE", "variable"),
         ("PROCEDURE", "procedure"),
         ("CONSTANT", "constant"),
+        ("STMT_ATTR", "stmt\\#"),  
+        ("VAR_ATTR", "varName"),
         ("NUMBER", "\\d+"),
         ("NAME", "[a-zA-Z][a-zA-Z0-9]*"),
         ("COMMA", ","),
