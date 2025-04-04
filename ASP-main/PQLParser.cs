@@ -55,6 +55,48 @@ namespace ASP_main
                 {
                     Eat("WITH");
                     var withClause = ParseWithClause();
+                    if (withClause.Left.Attribute == "stmt#" && withClause.Right.IsValue)
+                    {
+                        // Znajdź wszystkie relacje zawierające tę zmienną i zaktualizuj je
+                        for (int i = 0; i < query.Relations.Count; i++)
+                        {
+                            var relation = query.Relations[i];
+
+                            // Utwórz nową relację z podstawioną wartością
+                            var newRelation = new Relation(
+                                relation.Type,
+                                relation.Arg1 == withClause.Left.Reference ? withClause.Right.Value : relation.Arg1,
+                                relation.Arg2 == withClause.Left.Reference ? withClause.Right.Value : relation.Arg2
+                            );
+
+                            query.Relations[i] = newRelation;
+                        }
+                    }
+
+                    else if (withClause.Left.Attribute == "varName")
+                    {
+                        string value = withClause.Right.IsValue
+                            ? withClause.Right.Value
+                            : withClause.Right.Value; // W rzeczywistości powinno się sprawdzić wartość otherVar
+
+                        for (int i = 0; i < query.Relations.Count; i++)
+                        {
+                            var relation = query.Relations[i];
+                            var newRelation = new Relation(
+                                relation.Type,
+                                relation.Arg1 == withClause.Left.Reference ? value : relation.Arg1,
+                                relation.Arg2 == withClause.Left.Reference ? value : relation.Arg2
+                            );
+                            query.Relations[i] = newRelation;
+                        }
+                    }
+
+
+
+
+
+
+
                     query.WithClauses.Add(withClause);
                 }
                 else if (string.Equals(CurrentToken.Type, "AND", StringComparison.OrdinalIgnoreCase))
@@ -92,37 +134,78 @@ namespace ASP_main
 
         private WithArgument ParseWithArgument()
         {
+            // Case 1: Attribute reference (like v.varName)
             if (CurrentToken.Type == "NAME" && NextToken?.Type == "DOT")
             {
                 var refName = CurrentToken.Value;
                 Eat("NAME");
                 Eat("DOT");
-                var attrName = CurrentToken.Value;
-                Eat(attrName.ToUpper()); // np. stmt#, varName
-                return new WithArgument(refName, attrName);
+                string attrName;
+                // Obsługa różnych atrybutów
+                if (CurrentToken.Type == "STMT")
+                {
+                    Eat("STMT");
+                    return new WithArgument(refName, "stmt#")
+                    {
+                        LineNumber = CurrentToken?.LineNumber // Przypisanie numeru linii
+                    };
+                }
+                else
+                if (CurrentToken.Type == "VAR_ATTR" || CurrentToken.Value == "varName")
+                {
+                    Eat(CurrentToken.Type);
+                    return new WithArgument(refName, "varName");
+                }
+                else if (CurrentToken.Type == "QUOTE")
+                {
+                    Eat("QUOTE");
+                    var value = CurrentToken.Value;
+                    Eat("NAME");
+                    Eat("QUOTE");
+                    return new WithArgument(value, isValue: true);
+                }
+                // Case 3: Simple reference (variable name)
+                else if (CurrentToken.Type == "NAME")
+                {
+                    var value = CurrentToken.Value;
+                    Eat("NAME");
+                    return new WithArgument(value, isValue: false);
+                }
+                else
+                {
+                    throw new Exception($"Unexpected attribute: {CurrentToken.Value}");
+                }
+
+                
             }
+            // Case 2: Quoted string value
             else if (CurrentToken.Type == "QUOTE")
             {
                 Eat("QUOTE");
                 var value = CurrentToken.Value;
-                Eat("NAME");
+                Eat("NAME"); // Albo inny odpowiedni typ tokena dla wartości
                 Eat("QUOTE");
                 return new WithArgument(value, isValue: true);
             }
+            // Case 3: Numeric value
             else if (CurrentToken.Type == "NUMBER")
             {
                 var value = CurrentToken.Value;
                 Eat("NUMBER");
                 return new WithArgument(value, isValue: true);
             }
-            else
+            // Case 4: Simple reference (variable name)
+            else if (CurrentToken.Type == "NAME")
             {
                 var value = CurrentToken.Value;
                 Eat("NAME");
-                return new WithArgument(value, isValue: true);
+                return new WithArgument(value, isValue: false);
+            }
+            else
+            {
+                throw new Exception($"Unexpected token in with clause: {CurrentToken}");
             }
         }
-
         private Declaration ParseDeclaration()
         {
             var type = CurrentToken.Value;
@@ -222,6 +305,7 @@ namespace ASP_main
         public string Attribute { get; }
         public string Value { get; }
         public bool IsValue { get; }
+        public int? LineNumber { get; set; }
 
         public WithArgument(string reference, string attribute)
         {
