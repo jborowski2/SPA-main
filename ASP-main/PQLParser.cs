@@ -34,8 +34,8 @@ namespace ASP_main
             // Parse declaration
             while (CurrentToken != null && !string.Equals(CurrentToken.Type, "SELECT", StringComparison.OrdinalIgnoreCase))
             {
-                var decl = ParseDeclaration();
-                query.Declarations.Add(decl);
+                var decls = ParseDeclaration();
+                query.Declarations.AddRange(decls);
             }
 
             // Parse select
@@ -132,6 +132,30 @@ namespace ASP_main
             return new WithClause(left, right);
         }
 
+        private List<Declaration> ParseDeclaration()
+        {
+            var declarations = new List<Declaration>();
+            var type = CurrentToken.Value;
+            Eat(type.ToUpper()); // np. STMT, VARIABLE, etc.
+
+            // Parsuj pierwszy identyfikator
+            var firstName = CurrentToken.Value;
+            Eat("NAME");
+            declarations.Add(new Declaration(type, firstName));
+
+            // Parsuj kolejne identyfikatory po przecinkach
+            while (CurrentToken != null && CurrentToken.Type == "COMMA")
+            {
+                Eat("COMMA");
+                var nextName = CurrentToken.Value;
+                Eat("NAME");
+                declarations.Add(new Declaration(type, nextName));
+            }
+
+            Eat("SEMICOLON");
+            return declarations;
+        }
+
         private WithArgument ParseWithArgument()
         {
             // Case 1: Attribute reference (like v.varName)
@@ -206,15 +230,7 @@ namespace ASP_main
                 throw new Exception($"Unexpected token in with clause: {CurrentToken}");
             }
         }
-        private Declaration ParseDeclaration()
-        {
-            var type = CurrentToken.Value;
-            Eat(type.ToUpper()); // e.g., STMT, VARIABLE, etc.
-            var name = CurrentToken.Value;
-            Eat("NAME");
-            Eat("SEMICOLON");
-            return new Declaration(type, name);
-        }
+    
 
         private Selected ParseSelected()
         {

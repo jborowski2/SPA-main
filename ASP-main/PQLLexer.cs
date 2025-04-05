@@ -50,7 +50,7 @@ namespace ASP_main
         {
             _query = query;
             Tokenize();
-            PrintTokens();
+           // PrintTokens();
         }
 
         private void PrintTokens()

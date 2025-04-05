@@ -22,7 +22,7 @@ namespace ASP_main
     {
         var results = new List<string>();
         var statementSubstitutions = new Dictionary<string, int>();
-
+            
             foreach (var relation in query.Relations)
         {
                 foreach (var withClause in query.WithClauses)
@@ -38,7 +38,7 @@ namespace ASP_main
 
                 if (relation.Type.Equals("Modifies", StringComparison.OrdinalIgnoreCase))
             {
-
+                  
                     if (int.TryParse(relation.Arg1, out int lineNumber))
                     {
 
@@ -46,7 +46,14 @@ namespace ASP_main
                         string modifiedVar = FindModifiedVariableInLine(lineNumber);
                         if (modifiedVar != null)
                         {
-                            results.Add(modifiedVar);
+                            if (query.Selected.Name == "BOOLEAN")
+                            {
+                               
+                                    if (modifiedVar == relation.Arg2)
+                                        results.Add(modifiedVar);
+                            }
+                            else
+                                results.Add(modifiedVar);
                         }
                     }
                     else
@@ -63,7 +70,14 @@ namespace ASP_main
                     {
                         // Format: Uses(n, v) - znajdź zmienne używane w linii n
                         var usedVars = FindVariablesUsedInLine(lineNumber);
-                        results.AddRange(usedVars);
+                        if (query.Selected.Name == "BOOLEAN")
+                        {
+                            foreach (string s in usedVars)
+                                if (s == relation.Arg1)
+                                    results.Add(s);
+                        }
+                        else
+                            results.AddRange(usedVars);
 
                     }
                     else
@@ -105,9 +119,16 @@ namespace ASP_main
                     }
                 }
             }
-            if (results.Count == 0)
-            { results.Add("None"); }
-            return results.Distinct().ToList();
+            if(query.Selected.Name == "BOOLEAN")
+{
+                return new List<string> { (results.Count > 0).ToString() };
+            }
+                else
+            {
+                if (results.Count == 0)
+                { results.Add("None"); }
+                return results.Distinct().ToList();
+            }
         }
 
         private IEnumerable<object> FindAllFollowsTransitive(int followsLine)
