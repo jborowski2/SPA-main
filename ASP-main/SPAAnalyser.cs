@@ -92,8 +92,22 @@ namespace ASP_main
                     // Format: Parent(s, n) - dla linijki n w programie znajdź parenta 
                     if (int.TryParse(relation.Arg2, out int childLine))
                     {
+                        if (query.Selected.Name == "BOOLEAN")
+                        {
+                            foreach (int s in FindDirectParents(childLine).ToString())
+                            {
+                                int ascii = s - '0';
+                                if (ascii == int.Parse(relation.Arg1))
+                                    results.Add(ascii.ToString());
+                            }
+                        }
+                        else
+                            foreach (int s in FindDirectParents(childLine).ToString())
+                            {
+                                if (s!=-1)
+                                    results.Add(s.ToString());
+                            }
                         
-                        results.Add(FindDirectParents(childLine).ToString());
                         
                     }
                     else if (int.TryParse(relation.Arg1, out int parentline))
@@ -111,6 +125,18 @@ namespace ASP_main
                     // Format: Parent*(s, n) - dla linijki n w programie znajdź wszystkich parentów
                     if (int.TryParse(relation.Arg2, out int childLine))
                     {
+                        if (query.Selected.Name == "BOOLEAN")
+                        {
+                            foreach (int parentId in FindAllParentsTransitive(childLine))
+                            {
+                                // Nie ma potrzeby konwersji ASCII, bo już mamy int
+                                if (parentId == int.Parse(relation.Arg1))
+                                {
+                                    results.Add(parentId.ToString());
+                                }
+                            }
+                        }
+                        else
                         results.AddRange(FindAllParentsTransitive(childLine).Select(x => x.ToString()));
                     }
                     else if (int.TryParse(relation.Arg1, out int parentline))
@@ -123,30 +149,47 @@ namespace ASP_main
                 else if (relation.Type.Equals("Follows", StringComparison.OrdinalIgnoreCase))
                 {
                     // Format: Follows(s, n) - dla linijki n w programie znajdź prawego braciszka
-                    if (int.TryParse(relation.Arg2, out int followsLine))
+                    if (int.TryParse(relation.Arg1, out int followsLine))
                     {
-
+                        if (query.Selected.Name == "BOOLEAN")
+                        {
+                            if(FindDirectFollows(followsLine).ToString()==relation.Arg2)
+                                results.Add(FindDirectFollows(followsLine).ToString());
+                        }
+                        else
                         results.Add(FindDirectFollows(followsLine).ToString());
                     }
                     else
                     {
-                        var folowsleft = int.Parse(relation.Arg1);
-                        results.Add(wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww(folowsleft).ToString());
-                        
+                        var folowsleft = int.Parse(relation.Arg2);
+                        results.Add(FindDirectFollowsLeft(folowsleft).ToString());
+
 
                     }
                 }
                 else if (relation.Type.Equals("Follows*", StringComparison.OrdinalIgnoreCase))
                 {
                     // Format: Follows(s, n) - dla linijki n w programie znajdź wszystkich prawych braciszków braciszka
-                    if (int.TryParse(relation.Arg2, out int followsLine))
+                    if (int.TryParse(relation.Arg1, out int followsLine))
                     {
+                        if (query.Selected.Name == "BOOLEAN")
+                        {
+                            foreach (string followed in FindAllFollowsTransitive(followsLine).Select(x => x.ToString()))
+                            {
+                                // Nie ma potrzeby konwersji ASCII, bo już mamy int
+                                if (followed == relation.Arg2)
+                                {
+                                    results.Add(followed);
+                                }
+                            }
+                        }
+                        else
                         results.AddRange(FindAllFollowsTransitive(followsLine).Select(x => x.ToString()));
                     }
                     else
                     {
-                        var folowsLeft = int.Parse(relation.Arg1);
-                        results.AddRange(FindAllFollowsLeftTransitive(followsLine).Select(x => x.ToString()));
+                        var folowsLeft = int.Parse(relation.Arg2);
+                        results.AddRange(FindAllFollowsLeftTransitive(folowsLeft).Select(x => x.ToString()));
                     }
                 }
             }
@@ -217,7 +260,7 @@ namespace ASP_main
             {
                 return followed.Follows.LineNumber.Value;
             }
-            return "none";
+            return "None";
         }
 
         private List<string> FindVariablesUsedInLine(int lineNumber)
