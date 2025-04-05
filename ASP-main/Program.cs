@@ -46,7 +46,6 @@ namespace SPA_main
               ast.PrintTree();
             Console.WriteLine("Ready");
 
-
             //   
             // Process PQL query
             //   string query = " stmt s, s1; Select s such that Modifies (s, t)";
@@ -63,12 +62,8 @@ namespace SPA_main
             while (true)
             {
                 
-
-
-
-
-                //string query = ReadPqlQuery();
-                Console.WriteLine(query);
+                string query = ReadPqlQuery();
+                //Console.WriteLine(query);
                 PQLLexer pqlLexer = new PQLLexer(query);
                     List<Token> pqlTokens = pqlLexer.GetTokens();
                     PQLParser pqlParser = new PQLParser(pqlTokens);
@@ -99,9 +94,6 @@ namespace SPA_main
                     }
                 Console.WriteLine(wynik);
             }
-
-
-
 
         }
     }
