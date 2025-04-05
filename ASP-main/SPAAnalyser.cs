@@ -75,33 +75,64 @@ namespace ASP_main
                 }
                 else if (relation.Type.Equals("Parent", StringComparison.OrdinalIgnoreCase))
                 {
+                    // Format: Parent(s, n) - dla linijki n w programie znajdź parenta 
                     if (int.TryParse(relation.Arg2, out int childLine))
                     {
                         
                         results.Add(FindDirectParents(childLine).ToString());
+                        
+                    }
+                    else if (int.TryParse(relation.Arg1, out int parentline))
+                    {
+
+                        var node = FindNodeByLine(_ast, parentline);
+                        //format Paretn(n, s) - dla linijki n w programie znajdź dieci
+                        results.AddRange(FindAllChildrenTransistive(node).Select(x => x.ToString())); 
+
+                       
                     }
                 }
                 else if (relation.Type.Equals("Parent*", StringComparison.OrdinalIgnoreCase))
                 {
-                  
+                    // Format: Parent*(s, n) - dla linijki n w programie znajdź wszystkich parentów
                     if (int.TryParse(relation.Arg2, out int childLine))
                     {
                         results.AddRange(FindAllParentsTransitive(childLine).Select(x => x.ToString()));
                     }
+                    else if (int.TryParse(relation.Arg1, out int parentline))
+                    {
+                        var node = FindNodeByLine(_ast, parentline);
+                        //format Paretn(n, s) - dla linijki n w programie znajdź dieci
+                        results.AddRange(FindAllChildrenTransistive(node).Select(x => x.ToString()));
+                    }
                 }
                 else if (relation.Type.Equals("Follows", StringComparison.OrdinalIgnoreCase))
                 {
+                    // Format: Follows(s, n) - dla linijki n w programie znajdź prawego braciszka
                     if (int.TryParse(relation.Arg2, out int followsLine))
                     {
 
                         results.Add(FindDirectFollows(followsLine).ToString());
                     }
+                    else
+                    {
+                        var folowsleft = int.Parse(relation.Arg1);
+                        results.Add(wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww(folowsleft).ToString());
+                        
+
+                    }
                 }
                 else if (relation.Type.Equals("Follows*", StringComparison.OrdinalIgnoreCase))
                 {
+                    // Format: Follows(s, n) - dla linijki n w programie znajdź wszystkich prawych braciszków braciszka
                     if (int.TryParse(relation.Arg2, out int followsLine))
                     {
                         results.AddRange(FindAllFollowsTransitive(followsLine).Select(x => x.ToString()));
+                    }
+                    else
+                    {
+                        var folowsLeft = int.Parse(relation.Arg1);
+                        results.AddRange(FindAllFollowsLeftTransitive(followsLine).Select(x => x.ToString()));
                     }
                 }
             }
@@ -110,6 +141,34 @@ namespace ASP_main
             return results.Distinct().ToList();
         }
 
+        private object FindDirectFollowsLeft(int  line)
+        {
+            ASTNode followed = FindNodeByLine(_ast, line);
+            if (followed != null && followed.FollowedBy != null)
+            {
+                return followed.FollowedBy.LineNumber.Value;
+            }
+            return "none";
+        }
+        private IEnumerable<object> FindAllFollowsLeftTransitive(int followsLine)
+        {
+            ASTNode followed = FindNodeByLine(_ast, followsLine);
+            List<object> results = new List<object>();
+            while (followed != null)
+            {
+                if (followed != null && followed.FollowedBy != null)
+                {
+                    results.Add(followed.FollowedBy.LineNumber.Value);
+                    followed = followed.FollowedBy;
+                }
+                else
+                {
+                    followed = null;
+                }
+            }
+
+            return results;
+        }
         private IEnumerable<object> FindAllFollowsTransitive(int followsLine)
         {
             ASTNode followed = FindNodeByLine(_ast, followsLine);
@@ -182,7 +241,6 @@ namespace ASP_main
                 }
                 else if (node.Type == "while")
                 {
-                    // Dla pętli while, zmienna w warunku
                     variables.Add(node.Value);
                 }
             }
@@ -228,7 +286,6 @@ namespace ASP_main
             }
             else if (node.Type == "while" && node.Value == varName)
             {
-                // Warunek pętli while
                 return true;
             }
             return false;
@@ -294,13 +351,17 @@ namespace ASP_main
             return null;
         }
 
-        private List<ASTNode> FindAllChildren(ASTNode node)
+        private List<int> FindAllChildrenTransistive(ASTNode node)
         {
-            var children = new List<ASTNode>();
+            var children = new List<int>();
             foreach (var child in node.Children)
             {
-                children.Add(child);
-                children.AddRange(FindAllChildren(child));
+                if(child.LineNumber != null)
+                {
+                    children.Add(child.LineNumber.Value);
+                }
+       
+                children.AddRange(FindAllChildrenTransistive(child));
             }
             return children;
         }
@@ -351,35 +412,6 @@ namespace ASP_main
                 current = current.Follows;
             }
             return false;
-        }
-        private bool IsParent(ASTNode child, ASTNode parent)
-        {
-            return child != null && child.Parent == parent;
-        }
-        public bool IsParentStar(ASTNode child, ASTNode parent)
-        {
-            var current = parent;
-            while (current != null)
-            {
-                if (current.Parent == child)
-                    return true;
-                current = current.Parent;
-            }
-            return false;
-        }
-
-        public List<ASTNode> FindAllParents(int lineNumber)
-        {
-            var node = FindNodeByLine(_ast, lineNumber);
-            var parents = new List<ASTNode>();
-
-            while (node?.Parent != null)
-            {
-                parents.Add(node.Parent);
-                node = node.Parent;
-            }
-
-            return parents;
         }
 
         public ASTNode FindNodeByLine(ASTNode node, int targetLineNumber)
