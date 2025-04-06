@@ -9,7 +9,7 @@ using System.Xml.Linq;
 
 namespace ASP_main
 {
-    class SPAAnalyzer
+    public class SPAAnalyzer
     {
         private readonly ASTNode _ast;
 
@@ -73,7 +73,7 @@ namespace ASP_main
                         if (query.Selected.Name == "BOOLEAN")
                         {
                             foreach (string s in usedVars)
-                                if (s == relation.Arg1)
+                                if (s == relation.Arg1) //tu jak jest arg1 nie przechodzi testów jednostkowych, z arg2 przechodzi
                                     results.Add(s);
                         }
                         else
