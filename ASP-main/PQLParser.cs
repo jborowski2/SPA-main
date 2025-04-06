@@ -7,10 +7,10 @@ using System.Threading.Tasks;
 
 namespace ASP_main
 {
-    class PQLParser
+    public class PQLParser
     {
-        private readonly List<Token> _tokens;
-        private int _index = 0;
+        public List<Token> _tokens;
+        public int _index = 0;
 
         public PQLParser(List<Token> tokens)
         {
@@ -19,7 +19,7 @@ namespace ASP_main
 
         private Token CurrentToken => _index < _tokens.Count ? _tokens[_index] : null;
         private Token NextToken => _index + 1 < _tokens.Count ? _tokens[_index + 1] : null;
-        private void Eat(string type)
+        public void Eat(string type)
         {
             if (CurrentToken != null && string.Equals(CurrentToken.Type, type, StringComparison.OrdinalIgnoreCase))
                 _index++;
@@ -124,7 +124,7 @@ namespace ASP_main
             return query;
         }
 
-        private WithClause ParseWithClause()
+        public WithClause ParseWithClause()
         {
             var left = ParseWithArgument();
             Eat("EQUALS");
@@ -132,7 +132,7 @@ namespace ASP_main
             return new WithClause(left, right);
         }
 
-        private List<Declaration> ParseDeclaration()
+        public List<Declaration> ParseDeclaration()
         {
             var declarations = new List<Declaration>();
             var type = CurrentToken.Value;
@@ -156,7 +156,7 @@ namespace ASP_main
             return declarations;
         }
 
-        private WithArgument ParseWithArgument()
+        public WithArgument ParseWithArgument()
         {
             // Case 1: Attribute reference (like v.varName)
             if (CurrentToken.Type == "NAME" && NextToken?.Type == "DOT")
@@ -232,7 +232,7 @@ namespace ASP_main
         }
     
 
-        private Selected ParseSelected()
+        public Selected ParseSelected()
         {
             if (CurrentToken.Type == "NAME")
             {
@@ -246,7 +246,7 @@ namespace ASP_main
             }
         }
 
-        private Relation ParseRelation()
+        public Relation ParseRelation()
         {
             var relationType = CurrentToken.Value;
 
@@ -295,7 +295,7 @@ namespace ASP_main
     }
 
     // PQL Data Structures
-    class PQLQuery
+    public class PQLQuery
     {
         public List<Declaration> Declarations { get; } = new List<Declaration>();
         public Selected Selected { get; set; }
@@ -303,7 +303,7 @@ namespace ASP_main
         public List<WithClause> WithClauses { get; } = new List<WithClause>();
     }
 
-    class WithClause
+    public class WithClause
     {
         public WithArgument Left { get; }
         public WithArgument Right { get; }
@@ -315,7 +315,7 @@ namespace ASP_main
         }
     }
 
-    class WithArgument
+    public class WithArgument
     {
         public string Reference { get; }
         public string Attribute { get; }
@@ -337,7 +337,7 @@ namespace ASP_main
         }
     }
 
-    class Declaration
+    public class Declaration
     {
         public string Type { get; }
         public string Name { get; }
@@ -349,7 +349,7 @@ namespace ASP_main
         }
     }
 
-    class Selected
+    public class Selected
     {
         public string Name { get; }
 
@@ -359,7 +359,7 @@ namespace ASP_main
         }
     }
 
-    class Relation
+    public class Relation
     {
         public string Type { get; }
         public string Arg1 { get; }
