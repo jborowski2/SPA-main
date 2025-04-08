@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ASP_main
 {
-    class PQLLexer
+    public class PQLLexer
     {
         private static readonly (string, string)[] TokenSpecs =
     {
