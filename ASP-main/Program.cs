@@ -71,6 +71,9 @@ namespace SPA_main
             // string query = " stmt s, s1; Select s such that Parent (s, s1) with s1.stmt# = 9";
             //  string query = " stmt s, s1;\n Select s such that Follows (s, s1) with s1.stmt# = 9";
             //    Console.WriteLine("\nProcessing PQL query: " + query);
+
+
+            string query = " stmt s; Select s such that Follows (2, 2)";
             while (true)
             {
                 
@@ -81,12 +84,12 @@ namespace SPA_main
                     PQLParser pqlParser = new PQLParser(pqlTokens);
                     PQLQuery pqlQuery = pqlParser.ParseQuery();
 
-                    //Console.WriteLine("\nQuery parsed:");
-                    //   Console.WriteLine($"Selected: {pqlQuery.Selected.Name}");
-                    //   foreach (var rel in pqlQuery.Relations)
-                    //   {
-                    //      Console.WriteLine($"Relation: {rel.Type}({rel.Arg1}, {rel.Arg2})");
-                    //  }
+                Console.WriteLine("\nQuery parsed:");
+                Console.WriteLine($"Selected: {pqlQuery.Selected.Name}");
+                foreach (var rel in pqlQuery.Relations)
+                {
+                    Console.WriteLine($"Relation: {rel.Type}({rel.Arg1}, {rel.Arg2})");
+                }
 
                     // Analyze the query
                     SPAAnalyzer analyzer = new SPAAnalyzer(pkb.Root);

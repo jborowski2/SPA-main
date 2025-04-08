@@ -159,7 +159,7 @@ namespace ASP_main
                         else
                         results.Add(FindDirectFollows(followsLine).ToString());
                     }
-                    else
+                    else if (!int.TryParse(relation.Arg1, out int folows))
                     {
                         var folowsleft = int.Parse(relation.Arg2);
                         results.Add(FindDirectFollowsLeft(folowsleft).ToString());
@@ -205,15 +205,16 @@ namespace ASP_main
             }
         }
 
-        private object FindDirectFollowsLeft(int  line)
+        private object FindAllFollowsLeft(int folows)
         {
-            ASTNode followed = FindNodeByLine(_ast, line);
-            if (followed != null && followed.FollowedBy != null)
+            ASTNode followed = FindNodeByLine(_ast, folows);
+            if(followed != null && followed.Follows != null)
             {
-                return followed.FollowedBy.LineNumber.Value;
+                return followed.Follows.LineNumber.Value;
             }
             return "none";
         }
+
         private IEnumerable<object> FindAllFollowsLeftTransitive(int followsLine)
         {
             ASTNode followed = FindNodeByLine(_ast, followsLine);
@@ -256,7 +257,7 @@ namespace ASP_main
         private object FindDirectFollows(int followsLine)
         {
             ASTNode followed = FindNodeByLine(_ast, followsLine);
-            if (followed != null && followed.Follows!= null)
+            if (followed != null && followed.FollowedBy!= null)
             {
                 return followed.Follows.LineNumber.Value;
             }
