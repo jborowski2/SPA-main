@@ -2,6 +2,7 @@
 using ASP_main;
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -43,7 +44,21 @@ namespace SPA_main
             List<Token> tokens = lexer.GetTokens();
             Parser parser = new Parser(tokens);
             ASTNode ast = parser.ParseProgram();
-            //  ast.PrintTree();
+
+            PKB pkb = PKB.GetInstance();
+            pkb.SetRoot(ast);
+
+            // now you can use dictionary
+
+            foreach (var pair in pkb.LineToNode)
+            {
+                Console.WriteLine($"Linia: {pair.Key}, hash code węzła: {pair.Value.GetHashCode()}");
+            }
+            var node = pkb.GetNodeByLine(11);
+
+            //Console.WriteLine($"parametr : {11}, linia wezła {node.LineNumber}");
+            pkb.Root.PrintTree();
+
             Console.WriteLine("Ready");
 
             //   
@@ -74,7 +89,7 @@ namespace SPA_main
                     //  }
 
                     // Analyze the query
-                    SPAAnalyzer analyzer = new SPAAnalyzer(ast);
+                    SPAAnalyzer analyzer = new SPAAnalyzer(pkb.Root);
                     var results = analyzer.Analyze(pqlQuery);
                 // Console.WriteLine("\nResults:");
                 string wynik = null;
