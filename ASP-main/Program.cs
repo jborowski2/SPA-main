@@ -59,6 +59,78 @@ namespace SPA_main
             //Console.WriteLine($"parametr : {11}, linia wezła {node.LineNumber}");
             pkb.Root.PrintTree();
 
+
+            Console.WriteLine("\nWypisuję zawartość słowników i zbiorów w PKB:\n");
+
+            Console.WriteLine("Follows:");
+            foreach (var pair in pkb.Follows ?? new Dictionary<string, string>())
+            {
+                Console.WriteLine($"{pair.Key} -> {pair.Value}");
+            }
+
+            Console.WriteLine("\nParent:");
+            foreach (var pair in pkb.Parent ?? new Dictionary<string, List<string>>())
+            {
+                Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");
+            }
+
+            Console.WriteLine("\nIsParent:");
+            foreach (var pair in pkb.IsParent ?? new HashSet<(string Parent, string Child)>())
+            {
+                Console.WriteLine($"{pair.Parent} -> {pair.Child}");
+            }
+
+            Console.WriteLine("\nModifiesStmt:");
+            foreach (var pair in pkb.ModifiesStmt ?? new Dictionary<string, List<string>>())
+            {
+                Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");
+                // TO DO modifies doać terzeba ify i while , dodawnie parenta przy dodawniu modifies i tak w góre ,przy uses jak jest petla to ten warunek w petli jest używany 
+            }
+
+            Console.WriteLine("\nModifiesVar:");
+            foreach (var pair in pkb.ModifiesVar ?? new Dictionary<string, List<string>>())
+            {
+                Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");
+            }
+
+            Console.WriteLine("\nIsModifiesStmtVar:");
+            foreach (var pair in pkb.IsModifiesStmtVar ?? new HashSet<(string Stmt, string Var)>())
+            {
+                Console.WriteLine($"{pair.Stmt} -> {pair.Var}");
+            }
+
+            Console.WriteLine("\nIsModifiesProcVar:");
+            foreach (var pair in pkb.IsModifiesProcVar ?? new HashSet<(string Proc, string Var)>())
+            {
+                Console.WriteLine($"{pair.Proc} -> {pair.Var}");
+            }
+
+            Console.WriteLine("\nUsesStmt:");
+            foreach (var pair in pkb.UsesStmt ?? new Dictionary<string, List<string>>())
+            {
+                Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");// jego parent też używa tej zmiennej 
+            }
+
+            Console.WriteLine("\nUsesVar:");
+            foreach (var pair in pkb.UsesVar ?? new Dictionary<string, List<string>>())
+            {
+                Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");
+            }
+
+            Console.WriteLine("\nIsUsesStmtVar:");        // ile bedzie procedur w tescie ostatecznie bo np A -> B -> C x jest w C czuli a i b też używają x komplikacja złożoności obliczeniowej
+            foreach (var pair in pkb.IsUsesStmtVar ?? new HashSet<(string Stmt, string Var)>())
+            {
+                Console.WriteLine($"{pair.Stmt} -> {pair.Var}");
+            }
+
+            Console.WriteLine("\nIsUsesProcVar:");
+            foreach (var pair in pkb.IsUsesProcVar ?? new HashSet<(string Proc, string Var)>())
+            {
+                Console.WriteLine($"{pair.Proc} -> {pair.Var}");
+            }
+
+            Console.WriteLine("\nKoniec wypisywania słowników i zbiorów.");
+
             Console.WriteLine("Ready");
 
             //   
@@ -80,9 +152,9 @@ namespace SPA_main
                // string query = ReadPqlQuery();
                 //Console.WriteLine(query);
                 PQLLexer pqlLexer = new PQLLexer(query);
-                    List<Token> pqlTokens = pqlLexer.GetTokens();
-                    PQLParser pqlParser = new PQLParser(pqlTokens);
-                    PQLQuery pqlQuery = pqlParser.ParseQuery();
+                List<Token> pqlTokens = pqlLexer.GetTokens();
+                PQLParser pqlParser = new PQLParser(pqlTokens);
+                PQLQuery pqlQuery = pqlParser.ParseQuery();
 
                 Console.WriteLine("\nQuery parsed:");
                 Console.WriteLine($"Selected: {pqlQuery.Selected.Name}");
@@ -109,6 +181,7 @@ namespace SPA_main
                     }
 
                 Console.WriteLine(wynik);
+                break;
             }
 
         }
