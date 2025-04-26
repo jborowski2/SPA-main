@@ -2,6 +2,7 @@
 using ASP_main;
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -43,7 +44,21 @@ namespace SPA_main
             List<Token> tokens = lexer.GetTokens();
             Parser parser = new Parser(tokens);
             ASTNode ast = parser.ParseProgram();
-            //  ast.PrintTree();
+
+            PKB pkb = PKB.GetInstance();
+            pkb.SetRoot(ast);
+
+            // now you can use dictionary
+
+            foreach (var pair in pkb.LineToNode)
+            {
+                Console.WriteLine($"Linia: {pair.Key}, hash code węzła: {pair.Value.GetHashCode()}");
+            }
+            var node = pkb.GetNodeByLine(11);
+
+            //Console.WriteLine($"parametr : {11}, linia wezła {node.LineNumber}");
+            pkb.Root.PrintTree();
+
             Console.WriteLine("Ready");
 
             //   
@@ -56,28 +71,31 @@ namespace SPA_main
             // string query = " stmt s, s1; Select s such that Parent (s, s1) with s1.stmt# = 9";
             //  string query = " stmt s, s1;\n Select s such that Follows (s, s1) with s1.stmt# = 9";
             //    Console.WriteLine("\nProcessing PQL query: " + query);
+
+
+            string query = " stmt s; Select s such that Follows (4, s)";
             while (true)
             {
                 
-                string query = ReadPqlQuery();
+               // string query = ReadPqlQuery();
                 //Console.WriteLine(query);
                 PQLLexer pqlLexer = new PQLLexer(query);
                     List<Token> pqlTokens = pqlLexer.GetTokens();
                     PQLParser pqlParser = new PQLParser(pqlTokens);
                     PQLQuery pqlQuery = pqlParser.ParseQuery();
 
-                    //Console.WriteLine("\nQuery parsed:");
-                    //   Console.WriteLine($"Selected: {pqlQuery.Selected.Name}");
-                    //   foreach (var rel in pqlQuery.Relations)
-                    //   {
-                    //      Console.WriteLine($"Relation: {rel.Type}({rel.Arg1}, {rel.Arg2})");
-                    //  }
+                Console.WriteLine("\nQuery parsed:");
+                Console.WriteLine($"Selected: {pqlQuery.Selected.Name}");
+                foreach (var rel in pqlQuery.Relations)
+                {
+                    Console.WriteLine($"Relation: {rel.Type}({rel.Arg1}, {rel.Arg2})");
+                }
 
                     // Analyze the query
-                    SPAAnalyzer analyzer = new SPAAnalyzer(ast);
+                    SPAAnalyzer analyzer = new SPAAnalyzer(pkb);
                     var results = analyzer.Analyze(pqlQuery);
-                // Console.WriteLine("\nResults:");
-                string wynik = null;
+                    // Console.WriteLine("\nResults:");
+                     string wynik = null;
                     for (int i = 0; i < results.Count; i++)
                     {
                     wynik += results[i];
@@ -89,6 +107,7 @@ namespace SPA_main
                         }
                         
                     }
+
                 Console.WriteLine(wynik);
             }
 

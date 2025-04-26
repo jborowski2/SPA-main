@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace SPA_main
 {
-    class Lexer
+    public class Lexer
     {
         private static readonly (string, string)[] TokenSpecs =
         {
@@ -77,6 +77,8 @@ namespace SPA_main
 
                 // Inkrementujemy numer linii tylko jeśli to nie jest linia z procedure
                 // i nie jest to pusta linia (już sprawdzone na początku)
+
+                //z tym ifem nie przechodzi testów jednostkowych, samo lineNumber++ przechodzi
                 if (!isProcedureLine)
                 {
                     lineNumber++;

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SPA_main
 {
-    class Parser
+    public class Parser
     {
         private readonly List<Token> _tokens;
         private int _index = 0;
@@ -17,7 +17,7 @@ namespace SPA_main
         }
 
         private Token CurrentToken => _index < _tokens.Count ? _tokens[_index] : null;
-        private void Eat(string type)
+        public void Eat(string type)
         {
             if (CurrentToken != null && CurrentToken.Type == type)
                 _index++;
@@ -32,7 +32,7 @@ namespace SPA_main
                 node.AddChild(ParseProcedure());
             return node;
         }
-        private ASTNode ParseProcedure()
+        public ASTNode ParseProcedure()
         {
             Eat("PROCEDURE");
             string procName = CurrentToken.Value;
@@ -45,7 +45,7 @@ namespace SPA_main
             return procNode;
         }
 
-        private ASTNode ParseStmtLst()
+        public ASTNode ParseStmtLst()
         {
             var node = new ASTNode("stmtLst");
             ASTNode previousStmt = null;
@@ -62,7 +62,7 @@ namespace SPA_main
             return node;
         }
 
-        private ASTNode ParseStmt()
+        public ASTNode ParseStmt()
         {
             if (CurrentToken.Type == "WHILE")
                 return ParseWhile();
@@ -76,7 +76,7 @@ namespace SPA_main
             else
                 throw new Exception($"Unexpected statement: {CurrentToken}");
         }
-        private ASTNode ParseIf()
+        public ASTNode ParseIf()
         {
             int lineNumber = CurrentToken.LineNumber;
             Eat("IF");
@@ -96,7 +96,7 @@ namespace SPA_main
             ifNode.AddChild(elseStmtLst);
             return ifNode;
         }
-        private ASTNode ParseWhile()
+        public ASTNode ParseWhile()
         {
             int lineNumber = CurrentToken.LineNumber;
             Eat("WHILE");
@@ -110,7 +110,7 @@ namespace SPA_main
             return whileNode;
         }
 
-        private ASTNode ParseAssign()
+        public ASTNode ParseAssign()
         {
             int lineNumber = CurrentToken.LineNumber;
             string varName = CurrentToken.Value;
@@ -123,7 +123,7 @@ namespace SPA_main
             return assignNode;
         }
 
-        private ASTNode ParseExpr()
+        public ASTNode ParseExpr()
         {
             var node = ParseTerm();
 
@@ -140,7 +140,7 @@ namespace SPA_main
 
             return node;
         }
-        private ASTNode ParseTerm()
+        public ASTNode ParseTerm()
         {
             var node = ParseFactor();
 
@@ -157,7 +157,7 @@ namespace SPA_main
             return node;
         }
 
-        private ASTNode ParseFactor()
+        public ASTNode ParseFactor()
         {
             if (CurrentToken.Type == "NAME")
             {
@@ -183,7 +183,7 @@ namespace SPA_main
                 throw new Exception($"Unexpected token in factor: {CurrentToken}");
             }
         }
-        private ASTNode ParseCall()
+        public ASTNode ParseCall()
         {
             int lineNumber = CurrentToken.LineNumber;
             Eat("CALL");

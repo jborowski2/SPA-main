@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SPA_main
 {
-    class ASTNode
+    public class ASTNode
     {
         public string Type { get; }
         public string Value { get; }

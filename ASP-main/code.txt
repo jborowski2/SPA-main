@@ -17,4 +17,18 @@ else {
        call Hexagon; 
        c = c - 1; } 
  call Rectangle; } 
-
+procedure Rectangle { 
+while c  { 
+       t = d + 3 * a + c; 
+       call Triangle; 
+       c = c + 20; } 
+d = t; }
+procedure Triangle { 
+ while d { 
+       if t then { 
+d = t + 2; } 
+else {        
+a = t * a + d + k * b; }} 
+c = t + k + d; }
+procedure Hexagon { 
+28. t = a + t; } 
