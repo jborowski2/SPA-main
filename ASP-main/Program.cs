@@ -73,7 +73,7 @@ namespace SPA_main
             //    Console.WriteLine("\nProcessing PQL query: " + query);
 
 
-            string query = " stmt s; Select s such that Follows (2, 2)";
+            string query = " stmt s; Select s such that Follows (4, s)";
             while (true)
             {
                 
@@ -92,10 +92,10 @@ namespace SPA_main
                 }
 
                     // Analyze the query
-                    SPAAnalyzer analyzer = new SPAAnalyzer(pkb.Root);
+                    SPAAnalyzer analyzer = new SPAAnalyzer(pkb);
                     var results = analyzer.Analyze(pqlQuery);
-                // Console.WriteLine("\nResults:");
-                string wynik = null;
+                    // Console.WriteLine("\nResults:");
+                     string wynik = null;
                     for (int i = 0; i < results.Count; i++)
                     {
                     wynik += results[i];
@@ -107,6 +107,7 @@ namespace SPA_main
                         }
                         
                     }
+
                 Console.WriteLine(wynik);
             }
 

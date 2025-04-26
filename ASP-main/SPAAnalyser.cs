@@ -229,7 +229,7 @@ namespace ASP_main
                 return results.Distinct().ToList();
             }
         }
-        //poprawiona
+     
         private string FindDirectFollowsLeft(int line)
         {
             ASTNode followed = _pkb.GetNodeByLine(line);
@@ -240,7 +240,6 @@ namespace ASP_main
             return null; // DANGER producent powinien obsłużyć wartość null (czyli tutaj) a nie konsument  
         }
 
-        //poprawiona
         private List<string> FindAllFollowsLeftTransitive(int followsLine)
         {
             ASTNode followed = _pkb.GetNodeByLine(followsLine);
@@ -260,7 +259,7 @@ namespace ASP_main
 
             return results;
         }
-        //poprawione
+
         private List<string> FindAllFollowsTransitive(int followsLine)
         {
             ASTNode followed = _pkb.GetNodeByLine(followsLine);
@@ -280,7 +279,7 @@ namespace ASP_main
 
             return results;
         }
-        //naprawione
+
         private string FindDirectFollows(int followsLine)
         {
             ASTNode followed = _pkb.GetNodeByLine(followsLine);
@@ -290,7 +289,7 @@ namespace ASP_main
             }
             return null;// DANGER producent powinien obsłużyć wartość null (czyli tutaj) a nie konsument 
         }
-        //poprawiona
+
         private List<string> FindVariablesUsedInLine(int lineNumber)
         {
             var variables = new List<string>();
@@ -306,7 +305,7 @@ namespace ASP_main
             }
             return null;// DANGER producent powinien obsłużyć wartość null (czyli tutaj) a nie konsument 
         }
-        // poprawiona
+
         public List<string> FindAllParentsTransitive(int childLine)
         {
             var parents = new List<string>();
