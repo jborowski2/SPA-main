@@ -162,7 +162,6 @@ namespace ASP_main
                     else
                     {
                         var folowsleft = int.Parse(relation.Arg2);
-                        results.Add(FindDirectFollowsLeft(folowsleft).ToString());
 
 
                     }
