@@ -11,20 +11,19 @@ namespace ASP_main
 {
     public class SPAAnalyzer
     {
-        private readonly ASTNode _ast;
-
-        public SPAAnalyzer(ASTNode ast)
+        private readonly PKB _pkb;
+        public SPAAnalyzer(PKB pkb)
         {
-            _ast = ast;
+            _pkb = pkb;
         }
 
-    public List<string> Analyze(PQLQuery query)
-    {
-        var results = new List<string>();
-        var statementSubstitutions = new Dictionary<string, int>();
-            
-            foreach (var relation in query.Relations)
+        public List<string> Analyze(PQLQuery query)
         {
+            var results = new List<string>();
+            var statementSubstitutions = new Dictionary<string, int>();
+
+            foreach (var relation in query.Relations)
+            {
                 foreach (var withClause in query.WithClauses)
                 {
                     if (withClause.Left.Attribute == "stmt#" && withClause.Right.IsValue)
@@ -37,8 +36,8 @@ namespace ASP_main
                 }
 
                 if (relation.Type.Equals("Modifies", StringComparison.OrdinalIgnoreCase))
-            {
-                  
+                {
+
                     if (int.TryParse(relation.Arg1, out int lineNumber))
                     {
 
@@ -48,9 +47,9 @@ namespace ASP_main
                         {
                             if (query.Selected.Name == "BOOLEAN")
                             {
-                               
-                                    if (modifiedVar == relation.Arg2)
-                                        results.Add(modifiedVar);
+
+                                if (modifiedVar == relation.Arg2)
+                                    results.Add(modifiedVar);
                             }
                             else
                                 results.Add(modifiedVar);
@@ -89,141 +88,168 @@ namespace ASP_main
                 }
                 else if (relation.Type.Equals("Parent", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Format: Parent(s, n) - dla linijki n w programie znajdź parenta 
-                    if (int.TryParse(relation.Arg2, out int childLine))
+                    // Format: Parent(s, n) – dla linijki n w programie znajdź parenta
+                    bool arg1IsInt = int.TryParse(relation.Arg1, out int parentLine);
+                    bool arg2IsInt = int.TryParse(relation.Arg2, out int childLine);
+
+                    if (arg1IsInt && arg2IsInt)
                     {
+                        string parentFound = FindDirectParents(childLine);
                         if (query.Selected.Name == "BOOLEAN")
                         {
-                            foreach (int s in FindDirectParents(childLine).ToString())
-                            {
-                                int ascii = s - '0';
-                                if (ascii == int.Parse(relation.Arg1))
-                                    results.Add(ascii.ToString());
-                            }
+                            if (parentFound == parentLine.ToString())
+                                results.Add("true");
                         }
-                        else
-                            foreach (int s in FindDirectParents(childLine).ToString())
-                            {
-                                if (s!=-1)
-                                    results.Add(s.ToString());
-                            }
-                        
-                        
+                        else if (parentFound != "none")
+                        {
+                            results.Add(parentFound);
+                        }
                     }
-                    else if (int.TryParse(relation.Arg1, out int parentline))
+                    else if (arg1IsInt)
                     {
-
-                        var node = FindNodeByLine(_ast, parentline);
-                        //format Paretn(n, s) - dla linijki n w programie znajdź dieci
-                        results.AddRange(FindAllChildrenTransistive(node).Select(x => x.ToString())); 
-
-                       
+                        // Format: Parent(n, s) – dla linijki n w programie znajdź dzieci
+                        var node = _pkb.GetNodeByLine(parentLine);
+                        results.AddRange(FindAllChildrenTransistive(node).Select(x => x.ToString()));
+                    }
+                    else if (arg2IsInt)
+                    {
+                        // Format: Parent(s, n) – dla linijki n w programie znajdź parenta
+                        string parentFound = FindDirectParents(childLine);
+                        if (parentFound != "none")
+                            results.Add(parentFound);
                     }
                 }
                 else if (relation.Type.Equals("Parent*", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Format: Parent*(s, n) - dla linijki n w programie znajdź wszystkich parentów
-                    if (int.TryParse(relation.Arg2, out int childLine))
+                    // Format: Parent*(s, n) – dla linijki n w programie znajdź wszystkich parentów
+                    bool arg1IsInt = int.TryParse(relation.Arg1, out int parentLine);
+                    bool arg2IsInt = int.TryParse(relation.Arg2, out int childLine);
+
+                    if (arg1IsInt && arg2IsInt)
                     {
+                        var parents = FindAllParentsTransitive(childLine);
                         if (query.Selected.Name == "BOOLEAN")
                         {
-                            foreach (int parentId in FindAllParentsTransitive(childLine))
-                            {
-                                // Nie ma potrzeby konwersji ASCII, bo już mamy int
-                                if (parentId == int.Parse(relation.Arg1))
-                                {
-                                    results.Add(parentId.ToString());
-                                }
-                            }
+                            if (parents.Contains(parentLine.ToString()))
+                                results.Add("true");
                         }
                         else
-                        results.AddRange(FindAllParentsTransitive(childLine).Select(x => x.ToString()));
+                        {
+                            results.AddRange(parents);
+                        }
                     }
-                    else if (int.TryParse(relation.Arg1, out int parentline))
+                    else if (arg1IsInt)
                     {
-                        var node = FindNodeByLine(_ast, parentline);
-                        //format Paretn(n, s) - dla linijki n w programie znajdź dieci
+                        // Format: Parent*(n, s) – dla linijki n w programie znajdź wszystkie dzieci
+                        var node = _pkb.GetNodeByLine(parentLine);
                         results.AddRange(FindAllChildrenTransistive(node).Select(x => x.ToString()));
+                    }
+                    else if (arg2IsInt)
+                    {
+                        // Format: Parent*(s, n) – dla linijki n w programie znajdź wszystkich parentów
+                        var parents = FindAllParentsTransitive(childLine);
+                        results.AddRange(parents);
                     }
                 }
                 else if (relation.Type.Equals("Follows", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Format: Follows(s, n) - dla linijki n w programie znajdź prawego braciszka
-                    if (int.TryParse(relation.Arg1, out int followsLine))
+                    // Format: Follows(s, n) – dla linijki n w programie znajdź lewego brata
+                    bool arg1IsInt = int.TryParse(relation.Arg1, out int leftLine);
+                    bool arg2IsInt = int.TryParse(relation.Arg2, out int rightLine);
+
+                    if (arg1IsInt && arg2IsInt)
                     {
+                        int found = int.Parse(FindDirectFollows(leftLine));
                         if (query.Selected.Name == "BOOLEAN")
                         {
-                            if(FindDirectFollows(followsLine).ToString()==relation.Arg2)
-                                results.Add(FindDirectFollows(followsLine).ToString());
+                            if (found == rightLine)
+                                results.Add("true");
                         }
                         else
-                        results.Add(FindDirectFollows(followsLine).ToString());
+                        {
+                            results.Add(found.ToString());
+                        }
                     }
-                    else if (!int.TryParse(relation.Arg1, out int folows))
+                    else if (arg1IsInt)
                     {
-                        var folowsleft = int.Parse(relation.Arg2);
-                        results.Add(FindDirectFollowsLeft(folowsleft).ToString());
-
-
+                        // Format: Follows(n, s) – dla linijki n w programie znajdź prawego brata
+                        string found = FindDirectFollows(leftLine);
+                        if (found != null)
+                            results.Add(found);
+                    }
+                    else if (arg2IsInt)
+                    {
+                        // Format: Follows(s, n) – dla linijki n w programie znajdź lewego brata
+                        string found = FindDirectFollowsLeft(rightLine);
+                        if (found != null)
+                            results.Add(found);
                     }
                 }
                 else if (relation.Type.Equals("Follows*", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Format: Follows(s, n) - dla linijki n w programie znajdź wszystkich prawych braciszków braciszka
-                    if (int.TryParse(relation.Arg1, out int followsLine))
+                    // Format: Follows*(s, n) – dla linijki n w programie znajdź wszystkich lewych braci
+                    bool arg1IsInt = int.TryParse(relation.Arg1, out int leftLine);
+                    bool arg2IsInt = int.TryParse(relation.Arg2, out int rightLine);
+
+                    if (arg1IsInt && arg2IsInt)
                     {
+                        var follows = FindAllFollowsTransitive(leftLine);
                         if (query.Selected.Name == "BOOLEAN")
                         {
-                            foreach (string followed in FindAllFollowsTransitive(followsLine).Select(x => x.ToString()))
-                            {
-                                // Nie ma potrzeby konwersji ASCII, bo już mamy int
-                                if (followed == relation.Arg2)
-                                {
-                                    results.Add(followed);
-                                }
-                            }
+                            if (follows.Contains(rightLine.ToString()))
+                                results.Add("true");
                         }
                         else
-                        results.AddRange(FindAllFollowsTransitive(followsLine).Select(x => x.ToString()));
+                        {
+                            results.AddRange(follows);
+                        }
                     }
-                    else
+                    else if (arg1IsInt)
                     {
-                        var folowsLeft = int.Parse(relation.Arg2);
-                        results.AddRange(FindAllFollowsLeftTransitive(folowsLeft).Select(x => x.ToString()));
+                        // Format: Follows*(n, s) – dla linijki n w programie znajdź wszystkich prawych braci
+                        var follows = FindAllFollowsTransitive(leftLine);
+                        results.AddRange(follows);
+                    }
+                    else if (arg2IsInt)
+                    {
+                        // Format: Follows*(s, n) – dla linijki n w programie znajdź wszystkich lewych braci
+                        var follows = FindAllFollowsLeftTransitive(rightLine);
+                        results.AddRange(follows);
                     }
                 }
             }
-            if(query.Selected.Name == "BOOLEAN")
-{
+            if (query.Selected.Name == "BOOLEAN")
+            {
                 return new List<string> { (results.Count > 0).ToString() };
             }
-                else
+            else
             {
                 if (results.Count == 0)
                 { results.Add("None"); }
                 return results.Distinct().ToList();
             }
         }
-
-        private object FindAllFollowsLeft(int folows)
+        //poprawiona
+        private string FindDirectFollowsLeft(int line)
         {
-            ASTNode followed = FindNodeByLine(_ast, folows);
-            if(followed != null && followed.Follows != null)
+            ASTNode followed = _pkb.GetNodeByLine(line);
+            if (followed != null && followed.FollowedBy != null)
             {
-                return followed.Follows.LineNumber.Value;
+                return followed.FollowedBy.LineNumber.Value.ToString();
             }
-            return "none";
+            return null; // DANGER producent powinien obsłużyć wartość null (czyli tutaj) a nie konsument  
         }
 
-        private IEnumerable<object> FindAllFollowsLeftTransitive(int followsLine)
+        //poprawiona
+        private List<string> FindAllFollowsLeftTransitive(int followsLine)
         {
-            ASTNode followed = FindNodeByLine(_ast, followsLine);
-            List<object> results = new List<object>();
+            ASTNode followed = _pkb.GetNodeByLine(followsLine);
+            List<string> results = new List<string>();
             while (followed != null)
             {
                 if (followed != null && followed.FollowedBy != null)
                 {
-                    results.Add(followed.FollowedBy.LineNumber.Value);
+                    results.Add(followed.FollowedBy.LineNumber.Value.ToString());
                     followed = followed.FollowedBy;
                 }
                 else
@@ -234,15 +260,16 @@ namespace ASP_main
 
             return results;
         }
-        private IEnumerable<object> FindAllFollowsTransitive(int followsLine)
+        //poprawione
+        private List<string> FindAllFollowsTransitive(int followsLine)
         {
-            ASTNode followed = FindNodeByLine(_ast, followsLine);
-            List<object> results = new List<object>();
+            ASTNode followed = _pkb.GetNodeByLine(followsLine);
+            List<string> results = new List<string>();
             while (followed != null)
             {
                 if (followed != null && followed.Follows != null)
                 {
-                    results.Add(followed.Follows.LineNumber.Value);
+                    results.Add(followed.Follows.LineNumber.Value.ToString());
                     followed = followed.Follows;
                 }
                 else
@@ -250,43 +277,44 @@ namespace ASP_main
                     followed = null;
                 }
             }
-            
+
             return results;
         }
-
-        private object FindDirectFollows(int followsLine)
+        //naprawione
+        private string FindDirectFollows(int followsLine)
         {
-            ASTNode followed = FindNodeByLine(_ast, followsLine);
-            if (followed != null && followed.FollowedBy!= null)
+            ASTNode followed = _pkb.GetNodeByLine(followsLine);
+            if (followed != null && followed.Follows != null)
             {
-                return followed.Follows.LineNumber.Value;
+                return followed.Follows.LineNumber.Value.ToString();
             }
-            return "None";
+            return null;// DANGER producent powinien obsłużyć wartość null (czyli tutaj) a nie konsument 
         }
-
+        //poprawiona
         private List<string> FindVariablesUsedInLine(int lineNumber)
         {
             var variables = new List<string>();
-            FindVariablesUsedInNode(_ast, lineNumber, variables);
+            FindVariablesUsedInNode(_pkb.Root, lineNumber, variables);
             return variables.Distinct().ToList();
         }
-        public int FindDirectParents(int childLine)
+        public string FindDirectParents(int childLine)
         {
-            var childNode = FindNodeByLine(_ast, childLine);
+            var childNode = _pkb.GetNodeByLine(childLine);
             if (childNode?.Parent?.Parent != null && (childNode.Parent.Parent.Type == "while" || childNode.Parent.Parent.Type == "if"))
             {
-                return childNode.Parent.Parent.LineNumber.Value;
+                return childNode.Parent.Parent.LineNumber.Value.ToString();
             }
-            return -1;
+            return null;// DANGER producent powinien obsłużyć wartość null (czyli tutaj) a nie konsument 
         }
-        public List<int> FindAllParentsTransitive(int childLine)
+        // poprawiona
+        public List<string> FindAllParentsTransitive(int childLine)
         {
-            var parents = new List<int>();
-            var childNode = FindNodeByLine(_ast, childLine);
+            var parents = new List<string>();
+            var childNode = _pkb.GetNodeByLine(childLine);
 
             while (childNode?.Parent.Parent != null && (childNode.Parent.Parent.Type == "while" || childNode.Parent.Parent.Type == "if"))
             {
-                parents.Add(childNode.Parent.Parent.LineNumber.Value);
+                parents.Add(childNode.Parent.Parent.LineNumber.Value.ToString());
                 childNode = childNode.Parent.Parent;
             }
 
@@ -319,7 +347,7 @@ namespace ASP_main
         private List<int> FindLinesUsingVariable(string varName)
         {
             var lines = new List<int>();
-            FindLinesUsingVariableInNode(_ast, varName, lines);
+            FindLinesUsingVariableInNode(_pkb.Root, varName, lines);
             return lines.Distinct().OrderBy(x => x).ToList();
         }
 
@@ -393,7 +421,7 @@ namespace ASP_main
         private string? FindModifiedVariableInLine(int lineNumber)
         {
             // Każda linia przypisania modyfikuje dokładnie jedną zmienną
-            var assignNode = FindAssignNodeAtLine(_ast, lineNumber);
+            var assignNode = FindAssignNodeAtLine(_pkb.Root, lineNumber);
             return assignNode?.Value;
         }
 
@@ -421,11 +449,11 @@ namespace ASP_main
             var children = new List<int>();
             foreach (var child in node.Children)
             {
-                if(child.LineNumber != null)
+                if (child.LineNumber != null)
                 {
                     children.Add(child.LineNumber.Value);
                 }
-       
+
                 children.AddRange(FindAllChildrenTransistive(child));
             }
             return children;
@@ -434,7 +462,7 @@ namespace ASP_main
         private List<int> FindLinesModifyingVariable(string varName)
         {
             var lines = new List<int>();
-            FindAssignNodesForVariable(_ast, varName, lines);
+            FindAssignNodesForVariable(_pkb.Root, varName, lines);
             return lines;
         }
 
@@ -479,24 +507,32 @@ namespace ASP_main
             return false;
         }
 
-        public ASTNode FindNodeByLine(ASTNode node, int targetLineNumber)
-        {
-            if (node.LineNumber.HasValue && node.LineNumber.Value == targetLineNumber)
-            {
-                return node;
-            }
 
-            foreach (var child in node.Children)
-            {
-                var foundNode = FindNodeByLine(child, targetLineNumber);
-                if (foundNode != null) 
-                {
-                    return foundNode; 
-                }
-            }
+        /// <summary>
+        /// deprecatred nie używać tego przeszukiwania w _pkb jest słownik klucz(numer lini ) wartośc (ASTNode) 
+        /// </summary>
+        /// <param name="node"></param>
+        /// <param name="varName"></param>
+        /// <param name="results"></param>
 
-            return null; 
-        }
+        //public ASTNode FindNodeByLine(ASTNode node, int targetLineNumber)
+        //{
+        //    if (node.LineNumber.HasValue && node.LineNumber.Value == targetLineNumber)
+        //    {
+        //        return node;
+        //    }
+
+        //    foreach (var child in node.Children)
+        //    {
+        //        var foundNode = FindNodeByLine(child, targetLineNumber);
+        //        if (foundNode != null)
+        //        {
+        //            return foundNode;
+        //        }
+        //    }
+
+        //    return null;
+        //}
 
 
 

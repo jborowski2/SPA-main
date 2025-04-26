@@ -77,7 +77,7 @@ namespace SPA_main
             while (true)
             {
                 
-                string query = ReadPqlQuery();
+               // string query = ReadPqlQuery();
                 //Console.WriteLine(query);
                 PQLLexer pqlLexer = new PQLLexer(query);
                     List<Token> pqlTokens = pqlLexer.GetTokens();
