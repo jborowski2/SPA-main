@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
@@ -54,22 +55,25 @@ namespace ASP_main
         public Dictionary<string, List<string>> UsesVar { get; private set; }
         public HashSet<(string Stmt, string Var)> IsUsesStmtVar { get; private set; }
         public HashSet<(string Proc, string Var)> IsUsesProcVar { get; private set; }
+        public HashSet<(string Stmt, string Const)> IsUsesStmtConst { get; private set; }
         #endregion
 
         #region Calls Relation
         public Dictionary<string, List<string>> Calls { get; private set; }
         public HashSet<(string Caller, string Callee)> IsCalls { get; private set; }
         public HashSet<(string Caller, string Callee)> IsCallsStar { get; private set; }
-
+        public Dictionary<string, List<string>> Called { get; private set; }
         #endregion
 
         public HashSet<string> ConstValues { get; private set; }
+
+
         public HashSet<string> Assings { get; private set; }
         public HashSet<string> Whiles { get; private set; }
         public HashSet<string> Ifs { get; private set; }
         public HashSet<string> Variables { get; private set; }
         public HashSet<string> Procedures { get; private set; }
-        public HashSet<string> Stmts {  get; private set; }
+        public HashSet<string> Stmts { get; private set; }
         /// <summary>
         /// Private constructor to prevent external instantiation.
         /// </summary>
@@ -89,10 +93,13 @@ namespace ASP_main
             UsesVar = new Dictionary<string, List<string>>();
             IsUsesStmtVar = new HashSet<(string Stmt, string Var)>();
             IsUsesProcVar = new HashSet<(string Proc, string Var)>();
-
+            IsUsesStmtConst= new HashSet<(string Stmt, string Const)>();
             Calls = new Dictionary<string, List<string>>();
+            Called = new Dictionary<string, List<string>>();
             IsCalls = new HashSet<(string, string)>();
             IsCallsStar = new HashSet<(string, string)>();
+
+
 
             Stmts = new HashSet<string>();
             ConstValues = new HashSet<string>();
@@ -101,6 +108,7 @@ namespace ASP_main
             Ifs = new HashSet<string>();
             Variables = new HashSet<string>();
             Procedures = new HashSet<string>();
+            Stmts = new HashSet<string>();
         }
 
         /// <summary>
@@ -126,7 +134,6 @@ namespace ASP_main
             PopulateParent(Root);
             PopulateModifiesAndUses(Root);
             PopulateCalls(Root);
-            PopulateConst(Root);
         }
 
         private void PopulateFollows(ASTNode node)
@@ -178,44 +185,127 @@ namespace ASP_main
         {
             if (node == null) return;
 
+            // Najpierw przetwarzamy dzieci
             foreach (var child in node.Children)
                 PopulateModifiesAndUses(child);
 
-            if (node.LineNumber.HasValue)
+            if (node.Type == "procedure")
+            {
+                string procName = node.Value;
+
+                // Krok 1: Zbierz bezpośrednie Modifies/Uses z instrukcji w tej procedurze
+                var stmtsInProc = new HashSet<string>();
+                CollectStatementsInProcedure(node, stmtsInProc);
+
+                foreach (var stmt in stmtsInProc)
+                {
+                    // Modifies
+                    if (ModifiesStmt.ContainsKey(stmt))
+                        foreach (var varName in ModifiesStmt[stmt])
+                            IsModifiesProcVar.Add((procName, varName));
+
+                    // Uses
+                    if (UsesStmt.ContainsKey(stmt))
+                        foreach (var varName in UsesStmt[stmt])
+                            IsUsesProcVar.Add((procName, varName));
+                }
+
+                // Krok 2: Dodaj Modifies/Uses z wywoływanych procedur (z przechodniością)
+                if (Calls.ContainsKey(procName))
+                {
+                    var processed = new HashSet<string>();
+                    var queue = new Queue<string>(Calls[procName]);
+
+                    while (queue.Count > 0)
+                    {
+                        var callee = queue.Dequeue();
+                        if (processed.Contains(callee)) continue;
+                        processed.Add(callee);
+
+                        // Dodaj Modifies/Uses wywoływanej procedury
+                        foreach (var (p, v) in IsModifiesProcVar)
+                            if (p == callee) IsModifiesProcVar.Add((procName, v));
+
+                        foreach (var (p, v) in IsUsesProcVar)
+                            if (p == callee) IsUsesProcVar.Add((procName, v));
+
+                        // Dodaj wywołania zagnieżdżone (ale bez rekurencji)
+                        if (Calls.ContainsKey(callee))
+                            foreach (var newCallee in Calls[callee])
+                                if (!processed.Contains(newCallee))
+                                    queue.Enqueue(newCallee);
+                    }
+                }
+            }
+            else if (node.LineNumber.HasValue)
             {
                 string stmt = node.LineNumber.Value.ToString();
                
                 if (node.Type == "assign")
                 {
-                    // Modifies: zmienna po lewej stronie
-                    string varModified = node.Value;
-                    AddModifies(stmt, varModified);
+                    // Modifies: lewa strona
+                    AddModifies(stmt, node.Value);
 
-                    // Uses: zmienne po prawej stronie (w wyrażeniu)
-                    var varsUsed = GetVariablesFromExpression(node.Children.FirstOrDefault());
-                    foreach (var varUsed in varsUsed)
-                    {
-                        AddUses(stmt, varUsed);
-                    }
+                    var exprNode = node.Children.FirstOrDefault();
+                    // Uses: prawa strona
+                    foreach (var varName in GetVariablesFromExpression(exprNode))
+                        AddUses(stmt, varName);
+                    foreach (var constName in GetConstatntsFromExpression(exprNode))
+                        IsUsesStmtConst.Add((stmt, constName));
                 }
                 else if (node.Type == "while" || node.Type == "if")
                 {
                     // Uses: zmienna sterująca
-                    string controlVar = node.Value;
-                    AddUses(stmt, controlVar);
-                    AddModifies(stmt, controlVar);
-                    // --- NEW PART --- zbieramy wszystkie zmienne zmodyfikowane w ciele if/while
-                    var modifiedVars = GetAllModifiedVariables(node);
+                    AddUses(stmt, node.Value);
 
-                    foreach (var var in modifiedVars)
-                    {
-                        AddModifies(stmt, var);
-                    }
+                    // Modifies: wszystko w ciele
+                    foreach (var varName in GetAllModifiedVariables(node))
+                        AddModifies(stmt, varName);
                 }
                 else if (node.Type == "call")
                 {
-                    // jeszcze nie zaimplementowane
+                    // Modifies/Uses takie jak wywoływana procedura
+                    string procName = node.Value;
+                    foreach (var (p, v) in IsModifiesProcVar)
+                        if (p == procName) AddModifies(stmt, v);
+
+                    foreach (var (p, v) in IsUsesProcVar)
+                        if (p == procName) AddUses(stmt, v);
                 }
+            }
+        }
+
+        private IEnumerable<string> GetConstatntsFromExpression(ASTNode exprNode)
+        {
+            List<string> consts = new List<string>();
+            if (exprNode == null) return consts;
+
+            if (exprNode.Type == "const")
+            {
+                consts.Add(exprNode.Value);
+            }
+
+            foreach (var child in exprNode.Children)
+            {
+                consts.AddRange(GetConstatntsFromExpression(child));
+            }
+
+            return consts;
+
+        }
+
+        private void CollectStatementsInProcedure(ASTNode node, HashSet<string> stmts)
+        {
+            if (node == null) return;
+
+            if (node.LineNumber.HasValue)
+            {
+                stmts.Add(node.LineNumber.Value.ToString());
+            }
+
+            foreach (var child in node.Children)
+            {
+                CollectStatementsInProcedure(child, stmts);
             }
         }
         private void PopulateCalls(ASTNode node)
@@ -240,10 +330,7 @@ namespace ASP_main
         private void PopulateConst(ASTNode node)
         {
             if (node == null) return;
-            if(node.Type == "const")
-            {
-                ConstValues.Add(node.Value);
-            }
+            
             foreach(var child in node.Children)
             {
                 PopulateConst(child);
@@ -290,6 +377,7 @@ namespace ASP_main
             {
                 string calleeProc = node.Value;
                 AddCallRelation(callerProc, calleeProc);
+                AddCallRelation(node.LineNumber.ToString(), calleeProc);
             }
 
             foreach (var child in node.Children)
@@ -306,6 +394,11 @@ namespace ASP_main
             if (!Calls[caller].Contains(callee))
                 Calls[caller].Add(callee);
 
+            if (!Called.ContainsKey(callee))
+                Called[callee] = new List<string>();
+
+            if (!Called[callee].Contains(caller))
+                Called[callee].Add(caller);
             IsCalls.Add((caller, callee));
         }
 
@@ -397,13 +490,14 @@ namespace ASP_main
             if (node.LineNumber.HasValue)
             {
                 int lineNum = node.LineNumber.Value;
+                
 
                 if (!LineToNode.ContainsKey(lineNum))
                 {
                     LineToNode[lineNum] = node;
                     Stmts.Add(lineNum.ToString());
                 }
-                    ;
+                    
 
 
                 switch (node.Type)
@@ -423,6 +517,9 @@ namespace ASP_main
             switch (node.Type)
             {
                 case "var":
+                    Variables.Add(node.Value);
+                    break;
+                case "assign":
                     Variables.Add(node.Value);
                     break;
                 case "procedure":

@@ -36,6 +36,7 @@ namespace ASP_main
     // Atrybuty
     ("STMT_ATTR", @"stmt#"),
     ("VAR_ATTR", @"varName"),
+     ("VAR_ATTR", @"Name"),
     ("NUM_ATTR", @"value"),
    
     // Literały i inne
