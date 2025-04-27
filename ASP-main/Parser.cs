@@ -10,7 +10,7 @@ namespace SPA_main
     {
         private readonly List<Token> _tokens;
         private int _index = 0;
-
+        private string _actualProcName;
         public Parser(List<Token> tokens)
         {
             _tokens = tokens;
@@ -36,10 +36,12 @@ namespace SPA_main
         {
             Eat("PROCEDURE");
             string procName = CurrentToken.Value;
+            _actualProcName = procName;
             Eat("NAME");
             Eat("LBRACE");
             ASTNode stmtLst = ParseStmtLst();
             Eat("RBRACE");
+
             var procNode = new ASTNode("procedure", procName);
             procNode.AddChild(stmtLst);
             return procNode;
@@ -48,6 +50,7 @@ namespace SPA_main
         public ASTNode ParseStmtLst()
         {
             var node = new ASTNode("stmtLst");
+            node.ProcName = _actualProcName;
             ASTNode previousStmt = null;
             while (CurrentToken != null && CurrentToken.Type != "RBRACE")
             {

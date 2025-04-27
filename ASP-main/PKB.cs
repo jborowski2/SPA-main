@@ -54,6 +54,19 @@ namespace ASP_main
         public HashSet<(string Proc, string Var)> IsUsesProcVar { get; private set; }
         #endregion
 
+        #region Calls Relation
+        public Dictionary<string, List<string>> Calls { get; private set; }
+        public HashSet<(string Caller, string Callee)> IsCalls { get; private set; }
+        public HashSet<(string Caller, string Callee)> IsCallsStar { get; private set; }
+
+        #endregion
+
+        public HashSet<string> ConstValues { get; private set; }
+        public HashSet<string> Assings { get; private set; }
+        public HashSet<string> Whiles { get; private set; }
+        public HashSet<string> Ifs { get; private set; }
+        public HashSet<string> Variables { get; private set; }
+        public HashSet<string> Procedures { get; private set; }
         /// <summary>
         /// Private constructor to prevent external instantiation.
         /// </summary>
@@ -73,6 +86,17 @@ namespace ASP_main
             UsesVar = new Dictionary<string, List<string>>();
             IsUsesStmtVar = new HashSet<(string Stmt, string Var)>();
             IsUsesProcVar = new HashSet<(string Proc, string Var)>();
+
+            Calls = new Dictionary<string, List<string>>();
+            IsCalls = new HashSet<(string, string)>();
+            IsCallsStar = new HashSet<(string, string)>();
+
+            ConstValues = new HashSet<string>();
+            Assings = new HashSet<string>();
+            Whiles = new HashSet<string>();
+            Ifs = new HashSet<string>();
+            Variables = new HashSet<string>();
+            Procedures = new HashSet<string>();
         }
 
         /// <summary>
@@ -88,7 +112,7 @@ namespace ASP_main
         public void SetRoot( ASTNode root )
         {
             this.Root = root;
-            IndexTree( root );
+            IndexTree( Root );
             PopulateRelations();
 
         }
@@ -97,7 +121,10 @@ namespace ASP_main
             PopulateFollows(Root);
             PopulateParent(Root);
             PopulateModifiesAndUses(Root);
+            PopulateCalls(Root);
+            PopulateConst(Root);
         }
+
         private void PopulateFollows(ASTNode node)
         {
             if (node == null) return;
@@ -169,18 +196,144 @@ namespace ASP_main
                 }
                 else if (node.Type == "while" || node.Type == "if")
                 {
-                    // Uses: zmienna kontrolna
+                    // Uses: zmienna sterująca
                     string controlVar = node.Value;
                     AddUses(stmt, controlVar);
+                    AddModifies(stmt, controlVar);
+                    // --- NEW PART --- zbieramy wszystkie zmienne zmodyfikowane w ciele if/while
+                    var modifiedVars = GetAllModifiedVariables(node);
+
+                    foreach (var var in modifiedVars)
+                    {
+                        AddModifies(stmt, var);
+                    }
                 }
                 else if (node.Type == "call")
                 {
-                    string procName = node.Value;
-                    // Na późniejszym etapie dodamy Modifies i Uses dla call
+                    // jeszcze nie zaimplementowane
                 }
             }
         }
+        private void PopulateCalls(ASTNode node)
+        {
+            if (node == null) return;
 
+            foreach (var child in node.Children)
+                PopulateCalls(child);
+
+            if (node.Type == "procedure")
+            {
+                string procName = node.Value;
+                foreach (var stmt in node.Children)
+                {
+                    TraverseStatementsForCalls(procName, stmt);
+                }
+            }
+
+            // After all calls are populated, compute the transitive closure
+            ComputeCallsStar();
+        }
+        private void PopulateConst(ASTNode node)
+        {
+            if (node == null) return;
+            if(node.Type == "const")
+            {
+                ConstValues.Add(node.Value);
+            }
+            foreach(var child in node.Children)
+            {
+                PopulateConst(child);
+            }
+        }
+        private void ComputeCallsStar()
+        {
+            // First add all direct calls to Calls*
+            foreach (var call in IsCalls)
+            {
+                IsCallsStar.Add(call);
+            }
+
+            // Then compute the transitive closure using Floyd-Warshall algorithm
+            bool changed;
+            do
+            {
+                changed = false;
+                var callsStarCopy = new HashSet<(string, string)>(IsCallsStar);
+
+                foreach (var pair1 in callsStarCopy)
+                {
+                    foreach (var pair2 in callsStarCopy)
+                    {
+                        if (pair1.Item2 == pair2.Item1)
+                        {
+                            var newPair = (pair1.Item1, pair2.Item2);
+                            if (!IsCallsStar.Contains(newPair))
+                            {
+                                IsCallsStar.Add(newPair);
+                                changed = true;
+                            }
+                        }
+                    }
+                }
+            } while (changed);
+        }
+
+        private void TraverseStatementsForCalls(string callerProc, ASTNode node)
+        {
+            if (node == null) return;
+
+            if (node.Type == "call")
+            {
+                string calleeProc = node.Value;
+                AddCallRelation(callerProc, calleeProc);
+            }
+
+            foreach (var child in node.Children)
+            {
+                TraverseStatementsForCalls(callerProc, child);
+            }
+        }
+
+        private void AddCallRelation(string caller, string callee)
+        {
+            if (!Calls.ContainsKey(caller))
+                Calls[caller] = new List<string>();
+
+            if (!Calls[caller].Contains(callee))
+                Calls[caller].Add(callee);
+
+            IsCalls.Add((caller, callee));
+        }
+
+
+
+        private HashSet<string> GetAllModifiedVariables(ASTNode node)
+        {
+            HashSet<string> modifiedVars = new HashSet<string>();
+
+            if (node == null)
+                return modifiedVars;
+
+            if (node.LineNumber.HasValue)
+            {
+                string stmt = node.LineNumber.Value.ToString();
+
+                if (ModifiesStmt.ContainsKey(stmt))
+                {
+                    foreach (var varName in ModifiesStmt[stmt])
+                        modifiedVars.Add(varName);
+                }
+            }
+
+            foreach (var child in node.Children)
+            {
+                var childVars = GetAllModifiedVariables(child);
+                foreach (var varName in childVars)
+                    modifiedVars.Add(varName);
+            }
+
+            return modifiedVars;
+        }
         private List<string> GetVariablesFromExpression(ASTNode exprNode)
         {
             List<string> vars = new List<string>();
@@ -242,6 +395,27 @@ namespace ASP_main
                 int lineNum = node.LineNumber.Value;
                 if(!LineToNode.ContainsKey(lineNum))
                     LineToNode[lineNum] = node;
+                switch (node.Type)
+                {
+                    case "assign":
+                        Assings.Add(lineNum.ToString());
+                        break;
+                    case "while":
+                        Whiles.Add(lineNum.ToString());
+                        break;
+                    case "if":
+                        Ifs.Add(lineNum.ToString());
+                        break;
+                }
+            }
+            switch (node.Type)
+            {
+                case "var":
+                    Variables.Add(node.Value);
+                    break;
+                case "procedure":
+                    Procedures.Add(node.Value);
+                    break;
             }
             foreach (var child in node.Children)
             {

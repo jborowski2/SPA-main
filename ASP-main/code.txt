@@ -1,8 +1,8 @@
 procedure Circle { 
  t = 1;
  a = t + 10; 
- d = t * a + 2; 
- call Triangle; 
+ d = t * a + 2;  
+ call Triangle;
  b = t + a; 
  call Hexagon; 
  b = t + a; 
@@ -31,4 +31,4 @@ else {
 a = t * a + d + k * b; }} 
 c = t + k + d; }
 procedure Hexagon { 
-28. t = a + t; } 
+ t = a + t; } 

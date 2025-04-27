@@ -128,7 +128,54 @@ namespace SPA_main
             {
                 Console.WriteLine($"{pair.Proc} -> {pair.Var}");
             }
+            Console.WriteLine("\nCalls:");
+            foreach (var pair in pkb.Calls ?? new Dictionary<string, List<string>>())
+            {
+                Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");
+            }
 
+            Console.WriteLine("\nIsCalls:");
+            foreach (var pair in pkb.IsCalls ?? new HashSet<(string, string)>())
+            {
+                Console.WriteLine($"{pair.Item1} -> {pair.Item2}");
+            }
+
+            Console.WriteLine("\nIsCallsStar:");
+            foreach (var pair in pkb.IsCallsStar ?? new HashSet<(string, string)>())
+            {
+                Console.WriteLine($"{pair.Item1} -> {pair.Item2}");
+            }
+
+            Console.WriteLine("\nConsts:");
+            foreach (var pair in pkb.ConstValues )
+            {
+                Console.WriteLine($"{pair}");
+            }
+            Console.WriteLine("\nAssigns:");
+            foreach (var pair in pkb.Assings)
+            {
+                Console.WriteLine($"{pair}");
+            }
+            Console.WriteLine("\nWhiles:");
+            foreach (var pair in pkb.Whiles)
+            {
+                Console.WriteLine($"{pair}");
+            }
+            Console.WriteLine("\nIfs:");
+            foreach (var pair in pkb.Ifs)
+            {
+                Console.WriteLine($"{pair}");
+            }
+            Console.WriteLine("\nVariables:");
+            foreach (var pair in pkb.Variables)
+            {
+                Console.WriteLine($"{pair}");
+            }
+            Console.WriteLine("\nProcedures:");
+            foreach (var pair in pkb.Procedures)
+            {
+                Console.WriteLine($"{pair}");
+            }
             Console.WriteLine("\nKoniec wypisywania słowników i zbiorów.");
 
             Console.WriteLine("Ready");
