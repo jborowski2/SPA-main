@@ -69,6 +69,7 @@ namespace ASP_main
         public HashSet<string> Ifs { get; private set; }
         public HashSet<string> Variables { get; private set; }
         public HashSet<string> Procedures { get; private set; }
+        public HashSet<string> Stmts {  get; private set; }
         /// <summary>
         /// Private constructor to prevent external instantiation.
         /// </summary>
@@ -93,6 +94,7 @@ namespace ASP_main
             IsCalls = new HashSet<(string, string)>();
             IsCallsStar = new HashSet<(string, string)>();
 
+            Stmts = new HashSet<string>();
             ConstValues = new HashSet<string>();
             Assings = new HashSet<string>();
             Whiles = new HashSet<string>();
@@ -182,7 +184,7 @@ namespace ASP_main
             if (node.LineNumber.HasValue)
             {
                 string stmt = node.LineNumber.Value.ToString();
-
+               
                 if (node.Type == "assign")
                 {
                     // Modifies: zmienna po lewej stronie
@@ -387,7 +389,7 @@ namespace ASP_main
         /// Nodes without a line number are skipped.
         /// </summary>
         /// <param name="node">The current AST node to process.</param>
-        private void IndexTree( ASTNode node)
+        private void IndexTree(ASTNode node)
         {
             if (node == null)
                 return;
@@ -395,8 +397,15 @@ namespace ASP_main
             if (node.LineNumber.HasValue)
             {
                 int lineNum = node.LineNumber.Value;
-                if(!LineToNode.ContainsKey(lineNum))
+
+                if (!LineToNode.ContainsKey(lineNum))
+                {
                     LineToNode[lineNum] = node;
+                    Stmts.Add(lineNum.ToString());
+                }
+                    ;
+
+
                 switch (node.Type)
                 {
                     case "assign":
@@ -408,6 +417,7 @@ namespace ASP_main
                     case "if":
                         Ifs.Add(lineNum.ToString());
                         break;
+
                 }
             }
             switch (node.Type)
@@ -418,10 +428,14 @@ namespace ASP_main
                 case "procedure":
                     Procedures.Add(node.Value);
                     break;
+                case "const":
+                    ConstValues.Add(node.Value);
+                    break;
+
             }
             foreach (var child in node.Children)
             {
-                IndexTree( child );
+                IndexTree(child);
             }
 
         }

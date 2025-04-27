@@ -136,7 +136,7 @@ namespace ASP_main
                     };
                 }
                 else
-                if (CurrentToken.Type == "VAR_ATTR" || CurrentToken.Value == "varName")
+                if (CurrentToken.Type == "VAR_ATTR" || CurrentToken.Value == "varName" || CurrentToken.Type == "NUM_ATTR")
                 {
                     Eat(CurrentToken.Type);
                     return new WithArgument(refName, "varName");

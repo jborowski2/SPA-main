@@ -192,8 +192,12 @@ namespace SPA_main
             //    Console.WriteLine("\nProcessing PQL query: " + query);
 
 
-            string query = " stmt s, s1; assign a, a1, a2; while w; if ifstat; procedure p; variable v; constant c, co; prog_line n, n1,n2; " +
-                "Select s such that Follows (1, s) AND Uses (s, v) with 2 = 2 AND v.varname = t";
+            //string query = " stmt s, s1; assign a, a1, a2; while w; if ifstat; procedure p; variable v; constant c, co; prog_line n, n1,n2; " +
+            //    "Select s such that Follows (2, s) AND Uses (s, v) AND Modifies(s, d) with 2 = 2 AND v.varname = t AND s.stmt# = c.value AND co.value = w.stmt# AND ifstat.stmt# = 8";
+
+            string query = "constant c;" +
+                "Select c such that Uses(1, c)";
+
             while (true)
             {
                 

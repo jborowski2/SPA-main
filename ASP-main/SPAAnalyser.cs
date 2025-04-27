@@ -19,38 +19,41 @@ namespace ASP_main
 
         public List<string> Analyze(PQLQuery query)
         {
-            var finalresults = new List<string>();
+ 
             var statementSubstitutions = new Dictionary<string, int>();
             bool wynik = true;
+            var finalresults = new HashSet<string>();
+            if (query.Selected.Name != "BOOLEAN")
+                switch (query.Declarations[query.Selected.Name].Type)
+                {
+                case "assign":
+                    finalresults = _pkb.Assings;
+                    break;
+                case "stmt":
+                        finalresults = _pkb.Stmts;
+                    break;
+                case "while":
+                        finalresults = _pkb.Whiles;
+                    break;
+                    case "if":
+                        finalresults = _pkb.Ifs;
+                        break;
+                    case "procedure":
+                        finalresults = _pkb.Procedures;
+                        break;
+                    case "prog_line":
+                        finalresults = _pkb.Procedures;
+                        break;
+                    case "variable":
+                        finalresults = _pkb.Variables;
+                        break;
+                    case "constant":
+                        finalresults = _pkb.ConstValues;
+                        break;
 
-           
-        
-                   // Pobierz wszystkie numery linii i sprawdzaj je pojedynczo
-                    int maxLineNumber = _pkb.maxlinenumber;
-                      if(query.Selected.Name != "BOOLEAN")
-                    for (int lineNumber = 1; lineNumber <= maxLineNumber; lineNumber++)
-                    {
-                        var node = _pkb.GetNodeByLine(lineNumber);
-                        if (node != null)
-                        {
-                            if (query.Declarations[query.Selected.Name].Type == "stmt" ||
-                                query.Declarations[query.Selected.Name].Type == "prog_line")
-                            {
-                                if (node.Type == "assign" || node.Type == "while" ||
-                                    node.Type == "if" || node.Type == "prog_line" ||
-                                    node.Type == "stmt")
-                                {
-                                    finalresults.Add(node.LineNumber.ToString());
-                                }
-                            }
-                            else if (node.Type == query.Declarations[query.Selected.Name].Type)
-                            {
-                                finalresults.Add(node.LineNumber.ToString());
-                            }
-                        }
-                    }
-                
-            
+                }
+
+
 
             var updatedRelations = new List<Relation>();
             foreach (var relation in query.Relations)
@@ -63,8 +66,81 @@ namespace ASP_main
                 {
                     if (withClause.Left.Reference != null && withClause.Right.Reference != null)
                     {
+                        if (!query.Declarations.ContainsKey(withClause.Left.Reference))
+                            continue;
+                        bool test = false;
+                        if(withClause.Left.Reference == query.Selected.Name)
+                           
+                            {
+                            var filteredResults = new HashSet<string>(finalresults);
 
+                            // Filtrujemy kopię na podstawie wybranego zbioru z _pkb
+                            filteredResults.IntersectWith(query.Declarations[withClause.Right.Reference].Type switch
+                            {
+                                "assign" => _pkb.Assings,
+                                "stmt" => _pkb.Stmts,
+                                "while" => _pkb.Whiles,
+                                "if" => _pkb.Ifs,
+                                "procedure" => _pkb.Procedures,
+                                "prog_line" => _pkb.Procedures,
+                                "variable" => _pkb.Variables,
+                                "constant" => _pkb.ConstValues,
+                                _ => filteredResults // przypadek domyślny
+                            });
 
+                            // Przypisujemy przefiltrowane wyniki z powrotem do finalresults
+                            finalresults = filteredResults;
+                        }
+                        else
+                        {
+                            test = false;
+                            var testable = new HashSet<String>();
+                            switch (query.Declarations[withClause.Left.Reference].Type)
+                            {
+                                case "assign":
+                                    testable = _pkb.Assings;
+                                    break;
+                                case "stmt":
+                                    testable = _pkb.Stmts;
+                                    break;
+                                case "while":
+                                    testable = _pkb.Whiles;
+                                    break;
+                                case "if":
+                                    testable = _pkb.Ifs;
+                                    break;
+                                case "procedure":
+                                    testable = _pkb.Procedures;
+                                    break;
+                                case "prog_line":
+                                    testable = _pkb.Procedures;
+                                    break;
+                                case "variable":
+                                    testable = _pkb.Variables;
+                                    break;
+                                case "constant":
+                                    testable = _pkb.ConstValues;
+                                    break;
+
+                            }
+                            var sourceCollection = query.Declarations[withClause.Right.Reference].Type switch
+                            {
+                                "assign" => _pkb.Assings as IEnumerable<string>,
+                                "stmt" => _pkb.Stmts as IEnumerable<string>,
+                                "while" => _pkb.Whiles as IEnumerable<string>,
+                                "if" => _pkb.Ifs as IEnumerable<string>,
+                                "procedure" => _pkb.Procedures,
+                                "prog_line" => _pkb.Procedures,
+                                "variable" => _pkb.Variables,
+                                "constant" => _pkb.ConstValues as IEnumerable<string>,
+                                _ => testable
+                            };
+
+                            testable = testable.Intersect(sourceCollection).ToHashSet();
+                            if (testable.Count != 0) test = true;
+                            if (test == false) wynik = false;
+                        }
+                        
                     }
                     else
                     if (withClause.Left.Reference == null && withClause.Right.Reference == null)
@@ -76,17 +152,56 @@ namespace ASP_main
                     {
                         if (!query.Declarations.ContainsKey(withClause.Left.Reference))
                             continue;
-
+                        bool test = false;
                         var decl = query.Declarations[withClause.Left.Reference];
+                        switch (decl.Type)
+                        {
+                            case "assign":
+                                if (_pkb.Assings.Contains(withClause.Right.Value))
+                                    test = true;
+                                break;
+                            case "stmt":
+                                if (_pkb.Stmts.Contains(withClause.Right.Value))
+                                    test = true;
+                                break;
+                            case "while":
+                                if (_pkb.Whiles.Contains(withClause.Right.Value))
+                                    test = true;
+                                break;
+                            case "if":
+                                if (_pkb.Ifs.Contains(withClause.Right.Value))
+                                    test = true;
+                                break;
+                            case "procedure":
+                                if (_pkb.Procedures.Contains(withClause.Right.Value))
+                                    test = true;
+                                break;
+                            case "prog_line":
+                                if (_pkb.Stmts.Contains(withClause.Right.Value))
+                                    test = true;
+                                break;
+                            case "variable":
+                                if (_pkb.Variables.Contains(withClause.Right.Value))
+                                    test = true;
+                                break;
+                            case "constant":
+                                if (_pkb.ConstValues.Contains(withClause.Right.Value))
+                                    test = true;
+                                break;
 
-                        if (withClause.Left.Reference == relation.Arg1)
+                        }
+
+                        if (withClause.Left.Reference == relation.Arg1 && test == true)
                         {
                             newArg1 = withClause.Right.Value;
                         }
-                        else if (withClause.Left.Reference == relation.Arg2)
+                        else if (withClause.Left.Reference == relation.Arg2 && test == true)
                         {
                             newArg2 = withClause.Right.Value;
                         }
+
+                        if (test == false)
+                            wynik = false;
                     }
                 }
 
@@ -102,7 +217,7 @@ namespace ASP_main
          
             foreach (var relation in updatedRelations)
             {
-                var results = new List<string>();
+                var results = new HashSet<string>();
                 foreach (var withClause in query.WithClauses)
                 {
                     if (withClause.Left.Attribute == "stmt#" && withClause.Right.IsValue)
@@ -139,7 +254,8 @@ namespace ASP_main
                         // Format: Modifies(s, "x") - znajdź linie modyfikujące zmienną "x"
 
                         string varName = relation.Arg2.Trim('"');
-                        results.AddRange(FindLinesModifyingVariable(varName).Select(x => x.ToString()));
+                        results.UnionWith(FindLinesModifyingVariable(varName).Select(x => x.ToString()));
+
                     }
                 }
                 else if (relation.Type.Equals("Uses", StringComparison.OrdinalIgnoreCase))
@@ -155,14 +271,14 @@ namespace ASP_main
                                     results.Add(s);
                         }
                         else
-                            results.AddRange(usedVars);
+                            results.UnionWith(usedVars);
 
                     }
                     else
                     {
                         // Format: Uses(s, "x") - znajdź linie używające zmiennej "x"
                         string varName = relation.Arg2.Trim('"');
-                        results.AddRange(FindLinesUsingVariable(varName).Select(x => x.ToString()));
+                        results.UnionWith(FindLinesUsingVariable(varName).Select(x => x.ToString()));
                     }
                 }
                 else if (relation.Type.Equals("Parent", StringComparison.OrdinalIgnoreCase))
@@ -188,7 +304,7 @@ namespace ASP_main
                     {
                         // Format: Parent(n, s) – dla linijki n w programie znajdź dzieci
                         var node = _pkb.GetNodeByLine(parentLine);
-                        results.AddRange(FindAllChildrenTransistive(node).Select(x => x.ToString()));
+                        results.UnionWith(FindAllChildrenTransistive(node).Select(x => x.ToString()));
                     }
                     else if (arg2IsInt)
                     {
@@ -214,20 +330,20 @@ namespace ASP_main
                         }
                         else
                         {
-                            results.AddRange(parents);
+                            results.UnionWith(parents);
                         }
                     }
                     else if (arg1IsInt)
                     {
                         // Format: Parent*(n, s) – dla linijki n w programie znajdź wszystkie dzieci
                         var node = _pkb.GetNodeByLine(parentLine);
-                        results.AddRange(FindAllChildrenTransistive(node).Select(x => x.ToString()));
+                        results.UnionWith(FindAllChildrenTransistive(node).Select(x => x.ToString()));
                     }
                     else if (arg2IsInt)
                     {
                         // Format: Parent*(s, n) – dla linijki n w programie znajdź wszystkich parentów
                         var parents = FindAllParentsTransitive(childLine);
-                        results.AddRange(parents);
+                        results.UnionWith(parents);
                     }
                 }
                 else if (relation.Type.Equals("Follows", StringComparison.OrdinalIgnoreCase))
@@ -280,57 +396,34 @@ namespace ASP_main
                         }
                         else
                         {
-                            results.AddRange(follows);
+                            results.UnionWith(follows);
                         }
                     }
                     else if (arg1IsInt)
                     {
                         // Format: Follows*(n, s) – dla linijki n w programie znajdź wszystkich prawych braci
                         var follows = FindAllFollowsTransitive(leftLine);
-                        results.AddRange(follows);
+                        results.UnionWith(follows);
                     }
                     else if (arg2IsInt)
                     {
                         // Format: Follows*(s, n) – dla linijki n w programie znajdź wszystkich lewych braci
                         var follows = FindAllFollowsLeftTransitive(rightLine);
-                        results.AddRange(follows);
+                        results.UnionWith(follows);
                     }
                 }
 
-                if (finalresults.Count > 0)
+                if (results.Count > 0)
                 {
-                    // Znajdź część wspólną używając Intersect
-                    finalresults = finalresults.Intersect(results).ToList();
+                    
+                    finalresults.IntersectWith(results);
                 }
                 else
-                {
-                    finalresults = results;
-                }
-                if(finalresults.Count == 0) { wynik = false; }
+                { wynik = false; }
 
             }
 
-            var finalresults2 = new List<string>();
-            if (query.Selected.Name != "BOOLEAN")
-                foreach (string result in finalresults)
-            {
-                if(query.Declarations[query.Selected.Name].Type == "stmt" || query.Declarations[query.Selected.Name].Type == "prog_line")
-                {
-                    if(_pkb.GetNodeByLine(int.Parse(result)).Type == "assign" || _pkb.GetNodeByLine(int.Parse(result)).Type == "while" || _pkb.GetNodeByLine(int.Parse(result)).Type == "if" || _pkb.GetNodeByLine(int.Parse(result)).Type =="prog_line" || _pkb.GetNodeByLine(int.Parse(result)).Type == "stmt")
-                    {
-                        finalresults2.Add(result);
-                    }
-
-
-                }
-               else
-               if( _pkb.GetNodeByLine(int.Parse(result)).Type == query.Declarations[query.Selected.Name].Type )
-                {
-                    finalresults2.Add(result);
-                }
-
-            }
-
+         
             if (wynik == true)
             {
               
@@ -340,9 +433,9 @@ namespace ASP_main
                 }
                 else
                 {
-                    if (finalresults2.Count == 0)
-                    { finalresults2.Add("None"); }
-                    return finalresults2.Distinct().ToList();
+                    if (finalresults.Count == 0)
+                    { finalresults.Add("None"); }
+                    return finalresults.ToList();
                 }
             }
             else

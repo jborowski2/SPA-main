@@ -36,7 +36,8 @@ namespace ASP_main
     // Atrybuty
     ("STMT_ATTR", @"stmt#"),
     ("VAR_ATTR", @"varName"),
-    
+    ("NUM_ATTR", @"value"),
+   
     // Literały i inne
     ("NUMBER", @"\d+"),
     ("NAME", @"(?!\b(if|while|select|stmt|procedure|variable|constant|assign)\b)[a-zA-Z][a-zA-Z0-9]*"),
