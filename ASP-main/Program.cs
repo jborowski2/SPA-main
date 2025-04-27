@@ -48,135 +48,135 @@ namespace SPA_main
             PKB pkb = PKB.GetInstance();
             pkb.SetRoot(ast);
 
-            // now you can use dictionary
+            //// now you can use dictionary
 
-            foreach (var pair in pkb.LineToNode)
-            {
-                Console.WriteLine($"Linia: {pair.Key}, hash code węzła: {pair.Value.GetHashCode()}");
-            }
-            var node = pkb.GetNodeByLine(11);
+            //foreach (var pair in pkb.LineToNode)
+            //{
+            //    Console.WriteLine($"Linia: {pair.Key}, hash code węzła: {pair.Value.GetHashCode()}");
+            //}
+            //var node = pkb.GetNodeByLine(11);
 
-            //Console.WriteLine($"parametr : {11}, linia wezła {node.LineNumber}");
-            pkb.Root.PrintTree();
+            ////Console.WriteLine($"parametr : {11}, linia wezła {node.LineNumber}");
+            //pkb.Root.PrintTree();
 
 
-            Console.WriteLine("\nWypisuję zawartość słowników i zbiorów w PKB:\n");
+            //Console.WriteLine("\nWypisuję zawartość słowników i zbiorów w PKB:\n");
 
-            Console.WriteLine("Follows:");
-            foreach (var pair in pkb.Follows ?? new Dictionary<string, string>())
-            {
-                Console.WriteLine($"{pair.Key} -> {pair.Value}");
-            }
+            //Console.WriteLine("Follows:");
+            //foreach (var pair in pkb.Follows ?? new Dictionary<string, string>())
+            //{
+            //    Console.WriteLine($"{pair.Key} -> {pair.Value}");
+            //}
 
-            Console.WriteLine("\nParent:");
-            foreach (var pair in pkb.Parent ?? new Dictionary<string, List<string>>())
-            {
-                Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");
-            }
+            //Console.WriteLine("\nParent:");
+            //foreach (var pair in pkb.Parent ?? new Dictionary<string, List<string>>())
+            //{
+            //    Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");
+            //}
 
-            Console.WriteLine("\nIsParent:");
-            foreach (var pair in pkb.IsParent ?? new HashSet<(string Parent, string Child)>())
-            {
-                Console.WriteLine($"{pair.Parent} -> {pair.Child}");
-            }
+            //Console.WriteLine("\nIsParent:");
+            //foreach (var pair in pkb.IsParent ?? new HashSet<(string Parent, string Child)>())
+            //{
+            //    Console.WriteLine($"{pair.Parent} -> {pair.Child}");
+            //}
 
-            Console.WriteLine("\nModifiesStmt:");
-            foreach (var pair in pkb.ModifiesStmt ?? new Dictionary<string, List<string>>())
-            {
-                Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");
-                // TO DO modifies doać terzeba ify i while , dodawnie parenta przy dodawniu modifies i tak w góre ,przy uses jak jest petla to ten warunek w petli jest używany 
-            }
+            //Console.WriteLine("\nModifiesStmt:");
+            //foreach (var pair in pkb.ModifiesStmt ?? new Dictionary<string, List<string>>())
+            //{
+            //    Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");
+            //    // TO DO modifies doać terzeba ify i while , dodawnie parenta przy dodawniu modifies i tak w góre ,przy uses jak jest petla to ten warunek w petli jest używany 
+            //}
 
-            Console.WriteLine("\nModifiesVar:");
-            foreach (var pair in pkb.ModifiesVar ?? new Dictionary<string, List<string>>())
-            {
-                Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");
-            }
+            //Console.WriteLine("\nModifiesVar:");
+            //foreach (var pair in pkb.ModifiesVar ?? new Dictionary<string, List<string>>())
+            //{
+            //    Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");
+            //}
 
-            Console.WriteLine("\nIsModifiesStmtVar:");
-            foreach (var pair in pkb.IsModifiesStmtVar ?? new HashSet<(string Stmt, string Var)>())
-            {
-                Console.WriteLine($"{pair.Stmt} -> {pair.Var}");
-            }
+            //Console.WriteLine("\nIsModifiesStmtVar:");
+            //foreach (var pair in pkb.IsModifiesStmtVar ?? new HashSet<(string Stmt, string Var)>())
+            //{
+            //    Console.WriteLine($"{pair.Stmt} -> {pair.Var}");
+            //}
 
-            Console.WriteLine("\nIsModifiesProcVar:");
-            foreach (var pair in pkb.IsModifiesProcVar ?? new HashSet<(string Proc, string Var)>())
-            {
-                Console.WriteLine($"{pair.Proc} -> {pair.Var}");
-            }
+            //Console.WriteLine("\nIsModifiesProcVar:");
+            //foreach (var pair in pkb.IsModifiesProcVar ?? new HashSet<(string Proc, string Var)>())
+            //{
+            //    Console.WriteLine($"{pair.Proc} -> {pair.Var}");
+            //}
 
-            Console.WriteLine("\nUsesStmt:");
-            foreach (var pair in pkb.UsesStmt ?? new Dictionary<string, List<string>>())
-            {
-                Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");// jego parent też używa tej zmiennej 
-            }
+            //Console.WriteLine("\nUsesStmt:");
+            //foreach (var pair in pkb.UsesStmt ?? new Dictionary<string, List<string>>())
+            //{
+            //    Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");// jego parent też używa tej zmiennej 
+            //}
 
-            Console.WriteLine("\nUsesVar:");
-            foreach (var pair in pkb.UsesVar ?? new Dictionary<string, List<string>>())
-            {
-                Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");
-            }
+            //Console.WriteLine("\nUsesVar:");
+            //foreach (var pair in pkb.UsesVar ?? new Dictionary<string, List<string>>())
+            //{
+            //    Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");
+            //}
 
-            Console.WriteLine("\nIsUsesStmtVar:");        // ile bedzie procedur w tescie ostatecznie bo np A -> B -> C x jest w C czuli a i b też używają x komplikacja złożoności obliczeniowej
-            foreach (var pair in pkb.IsUsesStmtVar ?? new HashSet<(string Stmt, string Var)>())
-            {
-                Console.WriteLine($"{pair.Stmt} -> {pair.Var}");
-            }
+            //Console.WriteLine("\nIsUsesStmtVar:");        // ile bedzie procedur w tescie ostatecznie bo np A -> B -> C x jest w C czuli a i b też używają x komplikacja złożoności obliczeniowej
+            //foreach (var pair in pkb.IsUsesStmtVar ?? new HashSet<(string Stmt, string Var)>())
+            //{
+            //    Console.WriteLine($"{pair.Stmt} -> {pair.Var}");
+            //}
 
-            Console.WriteLine("\nIsUsesProcVar:");
-            foreach (var pair in pkb.IsUsesProcVar ?? new HashSet<(string Proc, string Var)>())
-            {
-                Console.WriteLine($"{pair.Proc} -> {pair.Var}");
-            }
-            Console.WriteLine("\nCalls:");
-            foreach (var pair in pkb.Calls ?? new Dictionary<string, List<string>>())
-            {
-                Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");
-            }
+            //Console.WriteLine("\nIsUsesProcVar:");
+            //foreach (var pair in pkb.IsUsesProcVar ?? new HashSet<(string Proc, string Var)>())
+            //{
+            //    Console.WriteLine($"{pair.Proc} -> {pair.Var}");
+            //}
+            //Console.WriteLine("\nCalls:");
+            //foreach (var pair in pkb.Calls ?? new Dictionary<string, List<string>>())
+            //{
+            //    Console.WriteLine($"{pair.Key} -> [{string.Join(", ", pair.Value)}]");
+            //}
 
-            Console.WriteLine("\nIsCalls:");
-            foreach (var pair in pkb.IsCalls ?? new HashSet<(string, string)>())
-            {
-                Console.WriteLine($"{pair.Item1} -> {pair.Item2}");
-            }
+            //Console.WriteLine("\nIsCalls:");
+            //foreach (var pair in pkb.IsCalls ?? new HashSet<(string, string)>())
+            //{
+            //    Console.WriteLine($"{pair.Item1} -> {pair.Item2}");
+            //}
 
-            Console.WriteLine("\nIsCallsStar:");
-            foreach (var pair in pkb.IsCallsStar ?? new HashSet<(string, string)>())
-            {
-                Console.WriteLine($"{pair.Item1} -> {pair.Item2}");
-            }
+            //Console.WriteLine("\nIsCallsStar:");
+            //foreach (var pair in pkb.IsCallsStar ?? new HashSet<(string, string)>())
+            //{
+            //    Console.WriteLine($"{pair.Item1} -> {pair.Item2}");
+            //}
 
-            Console.WriteLine("\nConsts:");
-            foreach (var pair in pkb.ConstValues )
-            {
-                Console.WriteLine($"{pair}");
-            }
-            Console.WriteLine("\nAssigns:");
-            foreach (var pair in pkb.Assings)
-            {
-                Console.WriteLine($"{pair}");
-            }
-            Console.WriteLine("\nWhiles:");
-            foreach (var pair in pkb.Whiles)
-            {
-                Console.WriteLine($"{pair}");
-            }
-            Console.WriteLine("\nIfs:");
-            foreach (var pair in pkb.Ifs)
-            {
-                Console.WriteLine($"{pair}");
-            }
-            Console.WriteLine("\nVariables:");
-            foreach (var pair in pkb.Variables)
-            {
-                Console.WriteLine($"{pair}");
-            }
-            Console.WriteLine("\nProcedures:");
-            foreach (var pair in pkb.Procedures)
-            {
-                Console.WriteLine($"{pair}");
-            }
-            Console.WriteLine("\nKoniec wypisywania słowników i zbiorów.");
+            //Console.WriteLine("\nConsts:");
+            //foreach (var pair in pkb.ConstValues )
+            //{
+            //    Console.WriteLine($"{pair}");
+            //}
+            //Console.WriteLine("\nAssigns:");
+            //foreach (var pair in pkb.Assings)
+            //{
+            //    Console.WriteLine($"{pair}");
+            //}
+            //Console.WriteLine("\nWhiles:");
+            //foreach (var pair in pkb.Whiles)
+            //{
+            //    Console.WriteLine($"{pair}");
+            //}
+            //Console.WriteLine("\nIfs:");
+            //foreach (var pair in pkb.Ifs)
+            //{
+            //    Console.WriteLine($"{pair}");
+            //}
+            //Console.WriteLine("\nVariables:");
+            //foreach (var pair in pkb.Variables)
+            //{
+            //    Console.WriteLine($"{pair}");
+            //}
+            //Console.WriteLine("\nProcedures:");
+            //foreach (var pair in pkb.Procedures)
+            //{
+            //    Console.WriteLine($"{pair}");
+            //}
+            //Console.WriteLine("\nKoniec wypisywania słowników i zbiorów.");
 
             Console.WriteLine("Ready");
 
@@ -195,25 +195,25 @@ namespace SPA_main
             //string query = " stmt s, s1; assign a, a1, a2; while w; if ifstat; procedure p; variable v; constant c, co; prog_line n, n1,n2; " +
             //    "Select s such that Follows (2, s) AND Uses (s, v) AND Modifies(s, d) with 2 = 2 AND v.varname = t AND s.stmt# = c.value AND co.value = w.stmt# AND ifstat.stmt# = 8";
 
-            string query = "procedure p; stmt s;" +
-                "Select BOOLEAN such that Calls* ( Circle,  p) with p.Name = Triangle";
+            //string query = "procedure p; stmt s;" +
+            //    "Select BOOLEAN such that Calls* ( Circle,  p) with p.Name = Triangle";
 
             while (true)
             {
                 
-               // string query = ReadPqlQuery();
+                string query = ReadPqlQuery();
                 //Console.WriteLine(query);
                 PQLLexer pqlLexer = new PQLLexer(query);
                 List<Token> pqlTokens = pqlLexer.GetTokens();
                 PQLParser pqlParser = new PQLParser(pqlTokens);
                 PQLQuery pqlQuery = pqlParser.ParseQuery();
 
-                Console.WriteLine("\nQuery parsed:");
-                Console.WriteLine($"Selected: {pqlQuery.Selected.Name}");
-                foreach (var rel in pqlQuery.Relations)
-                {
-                    Console.WriteLine($"Relation: {rel.Type}({rel.Arg1}, {rel.Arg2})");
-                }
+               // Console.WriteLine("\nQuery parsed:");
+                //Console.WriteLine($"Selected: {pqlQuery.Selected.Name}");
+           //     foreach (var rel in pqlQuery.Relations)
+          //      {
+          //          Console.WriteLine($"Relation: {rel.Type}({rel.Arg1}, {rel.Arg2})");
+          //      }
 
                     // Analyze the query
                     SPAAnalyzer analyzer = new SPAAnalyzer(pkb);
