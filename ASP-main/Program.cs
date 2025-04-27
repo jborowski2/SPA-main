@@ -196,7 +196,7 @@ namespace SPA_main
             //    "Select s such that Follows (2, s) AND Uses (s, v) AND Modifies(s, d) with 2 = 2 AND v.varname = t AND s.stmt# = c.value AND co.value = w.stmt# AND ifstat.stmt# = 8";
 
             string query = "procedure p; stmt s;" +
-                "Select p such that Calls ( s,  p) with p.Name = Hexagon";
+                "Select BOOLEAN such that Calls* ( Circle,  p) with p.Name = Triangle";
 
             while (true)
             {

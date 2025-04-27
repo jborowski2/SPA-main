@@ -13,35 +13,43 @@ namespace ASP_main
         private static readonly (string, string)[] TokenSpecs =
  {
     // Słowa kluczowe - dopasowywane jako całe słowa
+   ("PARENT_STAR", @"\bParent\*"),
+    ("FOLLOWS_STAR", @"\bFollows\*"),
+    ("CALLS_STAR", @"\bCalls\*"),
+
+    // Następnie podstawowe wersje bez *
+    ("PARENT", @"\bParent\b"),
+    ("FOLLOWS", @"\bFollows\b"),
+    ("CALLS", @"\bCalls\b"),
+
+    // Słowa kluczowe - case sensitive
     ("SELECT", @"\bSelect\b"),
-    ("SUCH_THAT", @"\bsuch that\b"),
+    ("SUCH_THAT", @"\bsuch\s+that\b"),  // Uwzględnia spację między słowami
     ("MODIFIES", @"\bModifies\b"),
     ("USES", @"\bUses\b"),
+    ("PATTERN", @"\bpattern\b"),
+    ("WITH", @"\bwith\b"),
+    ("AND", @"\bAND\b"),  // Zakładam, że "And" jest case-sensitive (wielka litera)
     ("WHILE", @"\bwhile\b"),
     ("IF", @"\bif\b"),
     ("PROG_LINE", @"\bprog_line\b"),
-    ("PARENT_STAR", @"\bParent\*\b"),
-    ("PARENT", @"\bParent\b(?!\*)"),
-    ("FOLLOWS_STAR", @"\bFollows\*\b"),
-    ("FOLLOWS", @"\bFollows\b(?!\*)"),
-    ("PATTERN", @"\bpattern\b"),
-    ("WITH", @"\bwith\b"),
-    ("AND", @"\band\b"),
+
+    // Typy encji
     ("STMT", @"\bstmt\b"),
     ("ASSIGN", @"\bassign\b"),
     ("VARIABLE", @"\bvariable\b"),
     ("PROCEDURE", @"\bprocedure\b"),
     ("CONSTANT", @"\bconstant\b"),
-    
+
     // Atrybuty
     ("STMT_ATTR", @"stmt#"),
     ("VAR_ATTR", @"varName"),
-     ("VAR_ATTR", @"Name"),
-    ("NUM_ATTR", @"value"),
-   
-    // Literały i inne
+    ("PROC_ATTR", @"procName"),  // Dodane dla spójności
+    ("VALUE_ATTR", @"value"),  // Spójność nazewnictwa
+
+    // Literały i symbole
     ("NUMBER", @"\d+"),
-    ("NAME", @"(?!\b(if|while|select|stmt|procedure|variable|constant|assign)\b)[a-zA-Z][a-zA-Z0-9]*"),
+    ("NAME", @"[a-zA-Z][a-zA-Z0-9]*"),  // Uproszczone, zakładając że keywords już są złapane
     ("COMMA", ","),
     ("SEMICOLON", ";"),
     ("DOT", @"\."),
@@ -50,7 +58,14 @@ namespace ASP_main
     ("RPAREN", @"\)"),
     ("UNDERSCORE", "_"),
     ("EQUALS", "="),
-    ("SKIP", @"[ \t\n]+")
+    ("LT", "<"),  // Dodane na wypadek
+    ("GT", ">"),  // Dodane na wypadek
+
+    // Białe znaki - pomijane
+    ("SKIP", @"\s+"),
+
+    // Domyślny token dla nieznanych znaków
+    ("UNKNOWN", @".")  // Zawsze ostatni
 };
         private readonly string _query;
         private readonly List<Token> _tokens = new List<Token>();

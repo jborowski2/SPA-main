@@ -1,12 +1,4 @@
 ﻿using SPA_main;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Serialization;
 
 namespace ASP_main
 {
@@ -63,8 +55,12 @@ namespace ASP_main
         public HashSet<(string Caller, string Callee)> IsCalls { get; private set; }
         public HashSet<(string Caller, string Callee)> IsCallsStar { get; private set; }
         public Dictionary<string, List<string>> Called { get; private set; }
+        public Dictionary<string, List<string>> CallsStar { get; private set; }
+        public Dictionary<string, List<string>> CalledStar { get; private set; }
+
         #endregion
 
+        #region Helpers
         public HashSet<string> ConstValues { get; private set; }
 
 
@@ -74,6 +70,8 @@ namespace ASP_main
         public HashSet<string> Variables { get; private set; }
         public HashSet<string> Procedures { get; private set; }
         public HashSet<string> Stmts { get; private set; }
+        #endregion
+        #region Constructor
         /// <summary>
         /// Private constructor to prevent external instantiation.
         /// </summary>
@@ -98,8 +96,8 @@ namespace ASP_main
             Called = new Dictionary<string, List<string>>();
             IsCalls = new HashSet<(string, string)>();
             IsCallsStar = new HashSet<(string, string)>();
-
-
+            CallsStar = new Dictionary<string, List<string>>();
+            CalledStar = new Dictionary<string, List<string>>();
 
             Stmts = new HashSet<string>();
             ConstValues = new HashSet<string>();
@@ -110,6 +108,7 @@ namespace ASP_main
             Procedures = new HashSet<string>();
             Stmts = new HashSet<string>();
         }
+        #endregion
 
         /// <summary>
         /// Returns the singleton instance of the PKB class.
@@ -323,8 +322,6 @@ namespace ASP_main
                     TraverseStatementsForCalls(procName, stmt);
                 }
             }
-
-            // After all calls are populated, compute the transitive closure
             ComputeCallsStar();
         }
         private void PopulateConst(ASTNode node)
@@ -343,30 +340,48 @@ namespace ASP_main
             {
                 IsCallsStar.Add(call);
             }
+            foreach (var caller in Calls.Keys)
+            {
+                CallsStar[caller] = new List<string>(Calls[caller]);
+            }
 
             // Then compute the transitive closure using Floyd-Warshall algorithm
             bool changed;
             do
             {
                 changed = false;
-                var callsStarCopy = new HashSet<(string, string)>(IsCallsStar);
+                
 
-                foreach (var pair1 in callsStarCopy)
+                foreach (var caller in CallsStar.Keys.ToList()) 
                 {
-                    foreach (var pair2 in callsStarCopy)
+                    foreach (var intermediate in CallsStar[caller].ToList())
                     {
-                        if (pair1.Item2 == pair2.Item1)
+                        if (CallsStar.ContainsKey(intermediate))
                         {
-                            var newPair = (pair1.Item1, pair2.Item2);
-                            if (!IsCallsStar.Contains(newPair))
+                            foreach (var callee in CallsStar[intermediate])
                             {
-                                IsCallsStar.Add(newPair);
-                                changed = true;
+                                if (!CallsStar[caller].Contains(callee))
+                                {
+                                    CallsStar[caller].Add(callee);
+                                    IsCallsStar.Add((caller, callee));
+                                    changed = true;
+                                }
                             }
                         }
                     }
                 }
             } while (changed);
+            foreach (var caller in CallsStar.Keys)
+            {
+                foreach (var callee in CallsStar[caller])
+                {
+                    if (!CalledStar.ContainsKey(callee))
+                        CalledStar[callee] = new List<string>();
+
+                    if (!CalledStar[callee].Contains(caller))
+                        CalledStar[callee].Add(caller);
+                }
+            }
         }
 
         private void TraverseStatementsForCalls(string callerProc, ASTNode node)

@@ -415,7 +415,7 @@ namespace ASP_main
                 else if (relation.Type.Equals("Calls", StringComparison.OrdinalIgnoreCase))
                 {
 
-                    if (_pkb.Procedures.Contains(relation.Arg1) && _pkb.Procedures.Contains(relation.Arg2))
+                    if ((_pkb.Procedures.Contains(relation.Arg1) && _pkb.Procedures.Contains(relation.Arg2)) ||((_pkb.Stmts.Contains(relation.Arg1) && _pkb.Procedures.Contains(relation.Arg2))))
                     {
                         if (!_pkb.IsCalls.Contains((relation.Arg1, relation.Arg2)))
                         {
@@ -423,7 +423,10 @@ namespace ASP_main
 
                         }
                         else
-                            results.Add("true");
+                        {
+                            
+                            results.Add(relation.Arg1);
+                        }
                     }
                     else
                     if (_pkb.Procedures.Contains(relation.Arg1) || _pkb.Stmts.Contains(relation.Arg1))
@@ -454,54 +457,52 @@ namespace ASP_main
                     }
 
                 }
-                //else if (relation.Type.Equals("Calls*", StringComparison.OrdinalIgnoreCase))
-                //{
-                //    if (_pkb.Procedures.Contains(relation.Arg1) && _pkb.Procedures.Contains(relation.Arg2))
-                //    {
-                //        // Sprawdzenie czy istnieje ścieżka wywołań między procedurami
-                //        if (!_pkb.IsCallsStar.Contains((relation.Arg1, relation.Arg2)))
-                //        {
-                //            wynik = false;
-                //        }
-                //        else
-                //        {
-                //            results.Add("true");
-                //        }
-                //    }
-                //    else if (_pkb.Procedures.Contains(relation.Arg1))
-                //    {
-                //        // Pobierz wszystkie procedury wywoływane (bezpośrednio lub pośrednio) przez Arg1
-                //        results.UnionWith(GetAllCalledProcedures(relation.Arg1, _pkb.Calls.ToList()));
-                //    }
-                //    else if (_pkb.Procedures.Contains(relation.Arg2))
-                //    {
-                //        // Pobierz wszystkie procedury wywołujące (bezpośrednio lub pośrednio) Arg2
-                //        results.UnionWith(GetAllCallingProcedures(relation.Arg2, _pkb.Called));
-                //    }
-                //    else
-                //    {
-                //        if (relation.Arg1 == query.Selected.Name)
-                //        {
-                //            // Zwróć wszystkie procedury które cokolwiek wywołują (bezpośrednio lub pośrednio)
-                //            var allCallers = new HashSet<string>();
-                //            foreach (var caller in _pkb.Calls.Keys)
-                //            {
-                //                allCallers.UnionWith(GetAllCalledProcedures(caller, _pkb.Calls));
-                //            }
-                //            results.UnionWith(allCallers);
-                //        }
-                //        else
-                //        {
-                //            // Zwróć wszystkie procedury które są przez cokolwiek wywoływane (bezpośrednio lub pośrednio)
-                //            var allCallees = new HashSet<string>();
-                //            foreach (var callee in _pkb.Called.Keys)
-                //            {
-                //                allCallees.UnionWith(GetAllCallingProcedures(callee, _pkb.Called));
-                //            }
-                //            results.UnionWith(allCallees);
-                //        }
-                //    }
-                //}
+                else if (relation.Type.Equals("Calls*", StringComparison.OrdinalIgnoreCase))
+                {
+
+                    if ((_pkb.Procedures.Contains(relation.Arg1) && _pkb.Procedures.Contains(relation.Arg2)) || ((_pkb.Stmts.Contains(relation.Arg1) && _pkb.Procedures.Contains(relation.Arg2))))
+                    {
+                        if (!_pkb.IsCallsStar.Contains((relation.Arg1, relation.Arg2)))
+                        {
+                            wynik = false;
+
+                        }
+                        else
+                        {
+
+                            results.Add(relation.Arg1);
+                        }
+                    }
+                    else
+                    if (_pkb.Procedures.Contains(relation.Arg1) || _pkb.Stmts.Contains(relation.Arg1))
+                    {
+                        results.UnionWith(_pkb.CallsStar[relation.Arg1]);
+
+                    }
+                    else
+                    if (_pkb.Procedures.Contains(relation.Arg2) && query.Declarations[relation.Arg1].Type == "stmt")
+                    {
+                        if (_pkb.CalledStar.Keys.Contains(relation.Arg2))
+                            results.Add(relation.Arg2);
+                    }
+                    else
+                    if (_pkb.Procedures.Contains(relation.Arg2))
+                    {
+
+                        results.UnionWith(_pkb.CalledStar[relation.Arg2]);
+
+                    }
+                    else
+                    {
+                        if (relation.Arg1 == query.Selected.Name)
+                            results.UnionWith(_pkb.CallsStar.Keys.ToList());
+                        else
+                            results.UnionWith(_pkb.CalledStar.Keys.ToList());
+
+                    }
+
+                }
+
                 if (results.Count > 0)
                 {
                     
