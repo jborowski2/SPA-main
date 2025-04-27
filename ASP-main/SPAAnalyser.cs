@@ -19,11 +19,90 @@ namespace ASP_main
 
         public List<string> Analyze(PQLQuery query)
         {
-            var results = new List<string>();
+            var finalresults = new List<string>();
             var statementSubstitutions = new Dictionary<string, int>();
+            bool wynik = true;
 
+           
+        
+                   // Pobierz wszystkie numery linii i sprawdzaj je pojedynczo
+                    int maxLineNumber = _pkb.maxlinenumber;
+                      if(query.Selected.Name != "BOOLEAN")
+                    for (int lineNumber = 1; lineNumber <= maxLineNumber; lineNumber++)
+                    {
+                        var node = _pkb.GetNodeByLine(lineNumber);
+                        if (node != null)
+                        {
+                            if (query.Declarations[query.Selected.Name].Type == "stmt" ||
+                                query.Declarations[query.Selected.Name].Type == "prog_line")
+                            {
+                                if (node.Type == "assign" || node.Type == "while" ||
+                                    node.Type == "if" || node.Type == "prog_line" ||
+                                    node.Type == "stmt")
+                                {
+                                    finalresults.Add(node.LineNumber.ToString());
+                                }
+                            }
+                            else if (node.Type == query.Declarations[query.Selected.Name].Type)
+                            {
+                                finalresults.Add(node.LineNumber.ToString());
+                            }
+                        }
+                    }
+                
+            
+
+            var updatedRelations = new List<Relation>();
             foreach (var relation in query.Relations)
             {
+                var newArg1 = relation.Arg1;
+                var newArg2 = relation.Arg2;
+                var relationType = relation.Type;
+
+                foreach (var withClause in query.WithClauses)
+                {
+                    if (withClause.Left.Reference != null && withClause.Right.Reference != null)
+                    {
+
+
+                    }
+                    else
+                    if (withClause.Left.Reference == null && withClause.Right.Reference == null)
+                    {
+                        if (withClause.Left.Value != withClause.Right.Value)
+                            wynik = false;
+                    }
+                    else
+                    {
+                        if (!query.Declarations.ContainsKey(withClause.Left.Reference))
+                            continue;
+
+                        var decl = query.Declarations[withClause.Left.Reference];
+
+                        if (withClause.Left.Reference == relation.Arg1)
+                        {
+                            newArg1 = withClause.Right.Value;
+                        }
+                        else if (withClause.Left.Reference == relation.Arg2)
+                        {
+                            newArg2 = withClause.Right.Value;
+                        }
+                    }
+                }
+
+                // Stwórz nową instancję Relation z zaktualizowanymi argumentami
+                updatedRelations.Add(new Relation(
+                     relationType,
+                     newArg1,
+                     newArg2));
+                    // Dodaj inne właściwości jeśli są wymagane
+                
+            }
+
+         
+            foreach (var relation in updatedRelations)
+            {
+                var results = new List<string>();
                 foreach (var withClause in query.WithClauses)
                 {
                     if (withClause.Left.Attribute == "stmt#" && withClause.Right.IsValue)
@@ -217,19 +296,70 @@ namespace ASP_main
                         results.AddRange(follows);
                     }
                 }
+
+                if (finalresults.Count > 0)
+                {
+                    // Znajdź część wspólną używając Intersect
+                    finalresults = finalresults.Intersect(results).ToList();
+                }
+                else
+                {
+                    finalresults = results;
+                }
+                if(finalresults.Count == 0) { wynik = false; }
+
             }
-            if (query.Selected.Name == "BOOLEAN")
+
+            var finalresults2 = new List<string>();
+            if (query.Selected.Name != "BOOLEAN")
+                foreach (string result in finalresults)
             {
-                return new List<string> { (results.Count > 0).ToString() };
+                if(query.Declarations[query.Selected.Name].Type == "stmt" || query.Declarations[query.Selected.Name].Type == "prog_line")
+                {
+                    if(_pkb.GetNodeByLine(int.Parse(result)).Type == "assign" || _pkb.GetNodeByLine(int.Parse(result)).Type == "while" || _pkb.GetNodeByLine(int.Parse(result)).Type == "if" || _pkb.GetNodeByLine(int.Parse(result)).Type =="prog_line" || _pkb.GetNodeByLine(int.Parse(result)).Type == "stmt")
+                    {
+                        finalresults2.Add(result);
+                    }
+
+
+                }
+               else
+               if( _pkb.GetNodeByLine(int.Parse(result)).Type == query.Declarations[query.Selected.Name].Type )
+                {
+                    finalresults2.Add(result);
+                }
+
+            }
+
+            if (wynik == true)
+            {
+              
+                if (query.Selected.Name == "BOOLEAN")
+                {
+                    return new List<string> { "True" };
+                }
+                else
+                {
+                    if (finalresults2.Count == 0)
+                    { finalresults2.Add("None"); }
+                    return finalresults2.Distinct().ToList();
+                }
             }
             else
+           
             {
-                if (results.Count == 0)
-                { results.Add("None"); }
-                return results.Distinct().ToList();
+                if (query.Selected.Name == "BOOLEAN")
+                {
+                    return new List<string> { "False" };
+                }
+                else
+                {
+                    return new List<string> { "None" };
+                }
             }
+          
         }
-     
+
         private string FindDirectFollowsLeft(int line)
         {
             ASTNode followed = _pkb.GetNodeByLine(line);

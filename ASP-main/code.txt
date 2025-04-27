@@ -31,4 +31,4 @@ else {
 a = t * a + d + k * b; }} 
 c = t + k + d; }
 procedure Hexagon { 
-28. t = a + t; } 
+ t = a + t; } 

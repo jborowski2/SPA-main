@@ -15,6 +15,7 @@ namespace SPA_main
         public ASTNode Parent { get; set; }
         public ASTNode Follows { get; set; }
         public ASTNode FollowedBy { get; set; }
+        
 
         public ASTNode(string type, string value = null, int? lineNumber = null)
         {

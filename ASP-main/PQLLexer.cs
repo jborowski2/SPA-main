@@ -11,38 +11,45 @@ namespace ASP_main
     public class PQLLexer
     {
         private static readonly (string, string)[] TokenSpecs =
-    {
-        ("SELECT", "Select"),
-        ("SUCH_THAT", "such that"),
-        ("MODIFIES", "Modifies"),
-        ("USES", "Uses"),
-        ("PARENT_STAR", "Parent\\*"),
-        ("PARENT", "Parent(?!\\*)"),
-        ("FOLLOWS_STAR", "Follows\\*"),
-        ("FOLLOWS", "Follows(?!\\*)"),
-        ("PATTERN", "pattern"),
-        ("WITH", "with"),
-        ("AND", "and"),
-        ("STMT", "stmt"),
-        ("ASSIGN", "assign"),
-        ("VARIABLE", "variable"),
-        ("PROCEDURE", "procedure"),
-        ("CONSTANT", "constant"),
-        ("STMT_ATTR", "stmt\\#"),  
-        ("VAR_ATTR", "varName"),
-        ("NUMBER", "\\d+"),
-        ("NAME", "[a-zA-Z][a-zA-Z0-9]*"),
-        ("COMMA", ","),
-        ("SEMICOLON", ";"),
-        ("DOT", "\\."),
-        ("QUOTE", "\""),
-        ("LPAREN", "\\("),
-        ("RPAREN", "\\)"),
-        ("UNDERSCORE", "_"),
-        ("EQUALS", "="),
-        ("SKIP", "[ \\t\\n]+")
-    };
-
+ {
+    // Słowa kluczowe - dopasowywane jako całe słowa
+    ("SELECT", @"\bSelect\b"),
+    ("SUCH_THAT", @"\bsuch that\b"),
+    ("MODIFIES", @"\bModifies\b"),
+    ("USES", @"\bUses\b"),
+    ("WHILE", @"\bwhile\b"),
+    ("IF", @"\bif\b"),
+    ("PROG_LINE", @"\bprog_line\b"),
+    ("PARENT_STAR", @"\bParent\*\b"),
+    ("PARENT", @"\bParent\b(?!\*)"),
+    ("FOLLOWS_STAR", @"\bFollows\*\b"),
+    ("FOLLOWS", @"\bFollows\b(?!\*)"),
+    ("PATTERN", @"\bpattern\b"),
+    ("WITH", @"\bwith\b"),
+    ("AND", @"\band\b"),
+    ("STMT", @"\bstmt\b"),
+    ("ASSIGN", @"\bassign\b"),
+    ("VARIABLE", @"\bvariable\b"),
+    ("PROCEDURE", @"\bprocedure\b"),
+    ("CONSTANT", @"\bconstant\b"),
+    
+    // Atrybuty
+    ("STMT_ATTR", @"stmt#"),
+    ("VAR_ATTR", @"varName"),
+    
+    // Literały i inne
+    ("NUMBER", @"\d+"),
+    ("NAME", @"(?!\b(if|while|select|stmt|procedure|variable|constant|assign)\b)[a-zA-Z][a-zA-Z0-9]*"),
+    ("COMMA", ","),
+    ("SEMICOLON", ";"),
+    ("DOT", @"\."),
+    ("QUOTE", "\""),
+    ("LPAREN", @"\("),
+    ("RPAREN", @"\)"),
+    ("UNDERSCORE", "_"),
+    ("EQUALS", "="),
+    ("SKIP", @"[ \t\n]+")
+};
         private readonly string _query;
         private readonly List<Token> _tokens = new List<Token>();
 
@@ -53,15 +60,7 @@ namespace ASP_main
            // PrintTokens();
         }
 
-        private void PrintTokens()
-        {
-            Console.WriteLine("=== Tokens ===");
-            foreach (var token in _tokens)
-            {
-                Console.WriteLine(token.ToString());
-            }
-            Console.WriteLine("==============");
-        }
+
         private void Tokenize()
         {
             string pattern = string.Join("|", TokenSpecs.Select(spec => $"(?<{spec.Item1}>{spec.Item2})"));

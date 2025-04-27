@@ -19,6 +19,8 @@ namespace ASP_main
         /// <summary>
         /// Singleton instance of PKB, initialized lazily and thread-safe.
         /// </summary>
+        public int maxlinenumber;
+        
         private static readonly Lazy<PKB> _instance = new Lazy<PKB>(() => new PKB());
 
         /// <summary>
@@ -69,6 +71,7 @@ namespace ASP_main
                 int lineNum = node.LineNumber.Value;
                 if(!LineToNode.ContainsKey(lineNum))
                     LineToNode[lineNum] = node;
+                maxlinenumber = Math.Max( maxlinenumber, lineNum );
             }
             foreach (var child in node.Children)
             {
@@ -92,6 +95,7 @@ namespace ASP_main
             return node;
         }
         
+
 
     }
 }

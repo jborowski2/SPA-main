@@ -35,7 +35,10 @@ namespace ASP_main
             while (CurrentToken != null && !string.Equals(CurrentToken.Type, "SELECT", StringComparison.OrdinalIgnoreCase))
             {
                 var decls = ParseDeclaration();
-                query.Declarations.AddRange(decls);
+                foreach (var decl in decls)
+                {
+                    query.Declarations.Add(decl.Name, decl);
+                }
             }
 
             // Parse select
@@ -55,57 +58,15 @@ namespace ASP_main
                 {
                     Eat("WITH");
                     var withClause = ParseWithClause();
-                    if (withClause.Left.Attribute == "stmt#" && withClause.Right.IsValue)
-                    {
-                        // Znajdź wszystkie relacje zawierające tę zmienną i zaktualizuj je
-                        for (int i = 0; i < query.Relations.Count; i++)
-                        {
-                            var relation = query.Relations[i];
-
-                            // Utwórz nową relację z podstawioną wartością
-                            var newRelation = new Relation(
-                                relation.Type,
-                                relation.Arg1 == withClause.Left.Reference ? withClause.Right.Value : relation.Arg1,
-                                relation.Arg2 == withClause.Left.Reference ? withClause.Right.Value : relation.Arg2
-                            );
-
-                            query.Relations[i] = newRelation;
-                        }
-                    }
-
-                    else if (withClause.Left.Attribute == "varName")
-                    {
-                        string value = withClause.Right.IsValue
-                            ? withClause.Right.Value
-                            : withClause.Right.Value; // W rzeczywistości powinno się sprawdzić wartość otherVar
-
-                        for (int i = 0; i < query.Relations.Count; i++)
-                        {
-                            var relation = query.Relations[i];
-                            var newRelation = new Relation(
-                                relation.Type,
-                                relation.Arg1 == withClause.Left.Reference ? value : relation.Arg1,
-                                relation.Arg2 == withClause.Left.Reference ? value : relation.Arg2
-                            );
-                            query.Relations[i] = newRelation;
-                        }
-                    }
-
-
-
-
-
-
-
-                    query.WithClauses.Add(withClause);
+                    query.WithClauses.Add(withClause);           
                 }
                 else if (string.Equals(CurrentToken.Type, "AND", StringComparison.OrdinalIgnoreCase))
                 {
                     Eat("AND");
                     // Obsługa AND - podobna do SUCH_THAT/WITH w zależności od następnego tokenu
-                    if (CurrentToken.Type == "WITH" || NextToken?.Type == "EQUALS")
+                    if ( NextToken?.Type == "DOT")
                     {
-                        Eat("WITH");
+                       
                         var withClause = ParseWithClause();
                         query.WithClauses.Add(withClause);
                     }
@@ -195,6 +156,12 @@ namespace ASP_main
                     Eat("NAME");
                     return new WithArgument(value, isValue: false);
                 }
+                else if (CurrentToken.Type == "NUMBER")
+                {
+                    var value = CurrentToken.Value;
+                    Eat("NUMBER");
+                    return new WithArgument(value, isValue: false);
+                }
                 else
                 {
                     throw new Exception($"Unexpected attribute: {CurrentToken.Value}");
@@ -223,7 +190,7 @@ namespace ASP_main
             {
                 var value = CurrentToken.Value;
                 Eat("NAME");
-                return new WithArgument(value, isValue: false);
+                return new WithArgument(value, isValue: true);
             }
             else
             {
@@ -297,7 +264,7 @@ namespace ASP_main
     // PQL Data Structures
     public class PQLQuery
     {
-        public List<Declaration> Declarations { get; } = new List<Declaration>();
+        public Dictionary<string, Declaration> Declarations { get; } = new Dictionary<string, Declaration>();
         public Selected Selected { get; set; }
         public List<Relation> Relations { get; } = new List<Relation>();
         public List<WithClause> WithClauses { get; } = new List<WithClause>();
@@ -308,6 +275,9 @@ namespace ASP_main
         public WithArgument Left { get; }
         public WithArgument Right { get; }
 
+        public bool IsAttributeComparison => Left.IsAttributeRef && Right.IsAttributeRef;
+        public bool IsStmtNumAssignment => Left.Attribute == "stmt#" && Right.IsValue;
+
         public WithClause(WithArgument left, WithArgument right)
         {
             Left = left;
@@ -317,10 +287,13 @@ namespace ASP_main
 
     public class WithArgument
     {
-        public string Reference { get; }
-        public string Attribute { get; }
-        public string Value { get; }
-        public bool IsValue { get; }
+        public string Reference { get; }  // np. "s" w "s.stmt#"
+        public string Attribute { get; } // np. "stmt#" w "s.stmt#"
+        public string Value { get; }     // wartość dla stałych
+        public bool IsValue { get; }     // czy to stała wartość
+        public bool IsAttributeRef => !string.IsNullOrEmpty(Reference) && !string.IsNullOrEmpty(Attribute);
+        public bool IsSimpleRef => !IsAttributeRef && !IsValue;
+
         public int? LineNumber { get; set; }
 
         public WithArgument(string reference, string attribute)
@@ -332,20 +305,49 @@ namespace ASP_main
 
         public WithArgument(string value, bool isValue)
         {
-            Value = value;
-            IsValue = true;
+            if (isValue)
+            {
+                Value = value;
+                IsValue = true;
+            }
+            else
+            {
+                Reference = value;
+                IsValue = false;
+            }
         }
     }
 
     public class Declaration
     {
-        public string Type { get; }
-        public string Name { get; }
+        public string Type { get; }  // np. "STMT", "VARIABLE", "PROCEDURE"
+        public string Name { get; }  // np. "s", "v", "p"
+        public Dictionary<string, string> Attributes { get; } = new Dictionary<string, string>();
 
         public Declaration(string type, string name)
         {
             Type = type;
             Name = name;
+
+            // Inicjalizacja domyślnych atrybutów w zależności od typu
+            switch (type.ToUpper())
+            {
+                case "VARIABLE":
+                    Attributes["varName"] = null;
+                    break;
+                case "PROCEDURE":
+                    Attributes["procName"] = null;
+                    break;
+                case "ASSIGN":
+                case "STMT":
+                case "WHILE":
+                case "IF":
+                    Attributes["stmt#"] = null;
+                    break;
+                case "CONSTANT":
+                    Attributes["value"] = null;
+                    break;
+            }
         }
     }
 
