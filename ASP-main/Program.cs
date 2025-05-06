@@ -233,7 +233,7 @@ namespace SPA_main
                     }
 
                 Console.WriteLine(wynik);
-                break;
+                
             }
 
         }

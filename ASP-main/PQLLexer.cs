@@ -13,43 +13,37 @@ namespace ASP_main
         private static readonly (string, string)[] TokenSpecs =
  {
     // Słowa kluczowe - dopasowywane jako całe słowa
-   ("PARENT_STAR", @"\bParent\*"),
-    ("FOLLOWS_STAR", @"\bFollows\*"),
-    ("CALLS_STAR", @"\bCalls\*"),
-
-    // Następnie podstawowe wersje bez *
-    ("PARENT", @"\bParent\b"),
-    ("FOLLOWS", @"\bFollows\b"),
-    ("CALLS", @"\bCalls\b"),
-
-    // Słowa kluczowe - case sensitive
-    ("SELECT", @"\bSelect\b"),
-    ("SUCH_THAT", @"\bsuch\s+that\b"),  // Uwzględnia spację między słowami
+     ("SELECT", @"\bSelect\b"),
+    ("SUCH_THAT", @"\bsuch that\b"),
     ("MODIFIES", @"\bModifies\b"),
     ("USES", @"\bUses\b"),
-    ("PATTERN", @"\bpattern\b"),
-    ("WITH", @"\bwith\b"),
-    ("AND", @"\bAND\b"),  // Zakładam, że "And" jest case-sensitive (wielka litera)
     ("WHILE", @"\bwhile\b"),
     ("IF", @"\bif\b"),
     ("PROG_LINE", @"\bprog_line\b"),
-
-    // Typy encji
+    ("PARENT_STAR", @"\bParent\*"),
+    ("PARENT", @"\bParent\b(?!\*)"),
+    ("FOLLOWS_STAR", @"\bFollows\*"),
+    ("FOLLOWS", @"\bFollows\b(?!\*)"),
+    ("FOLLOWS_STAR", @"\bFollows\*"),
+    ("FOLLOWS", @"\bFollows\b(?!\*)"),
+    ("PATTERN", @"\bpattern\b"),
+    ("WITH", @"\bwith\b"),
+    ("AND", @"\band\b"),
     ("STMT", @"\bstmt\b"),
     ("ASSIGN", @"\bassign\b"),
     ("VARIABLE", @"\bvariable\b"),
     ("PROCEDURE", @"\bprocedure\b"),
     ("CONSTANT", @"\bconstant\b"),
-
+    
     // Atrybuty
     ("STMT_ATTR", @"stmt#"),
     ("VAR_ATTR", @"varName"),
-    ("PROC_ATTR", @"procName"),  // Dodane dla spójności
-    ("VALUE_ATTR", @"value"),  // Spójność nazewnictwa
-
-    // Literały i symbole
+     ("VAR_ATTR", @"Name"),
+    ("NUM_ATTR", @"value"),
+   
+    // Literały i inne
     ("NUMBER", @"\d+"),
-    ("NAME", @"[a-zA-Z][a-zA-Z0-9]*"),  // Uproszczone, zakładając że keywords już są złapane
+    ("NAME", @"(?!\b(if|while|select|stmt|procedure|variable|constant|assign)\b)[a-zA-Z][a-zA-Z0-9]*"),
     ("COMMA", ","),
     ("SEMICOLON", ";"),
     ("DOT", @"\."),
@@ -58,14 +52,7 @@ namespace ASP_main
     ("RPAREN", @"\)"),
     ("UNDERSCORE", "_"),
     ("EQUALS", "="),
-    ("LT", "<"),  // Dodane na wypadek
-    ("GT", ">"),  // Dodane na wypadek
-
-    // Białe znaki - pomijane
-    ("SKIP", @"\s+"),
-
-    // Domyślny token dla nieznanych znaków
-    ("UNKNOWN", @".")  // Zawsze ostatni
+    ("SKIP", @"[ \t\n]+")
 };
         private readonly string _query;
         private readonly List<Token> _tokens = new List<Token>();

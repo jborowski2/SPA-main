@@ -12,7 +12,7 @@ namespace ASP_main
     public class SPAAnalyzer
     {
         private readonly PKB _pkb;
-        public SPAAnalyzer(PKB pkb)
+        public  SPAAnalyzer(PKB pkb)
         {
             _pkb = pkb;
         }
@@ -505,8 +505,8 @@ namespace ASP_main
 
                 if (results.Count > 0)
                 {
-                    
-                    finalresults.IntersectWith(results);
+
+                    finalresults = new HashSet<string>(finalresults.Intersect(results));
                 }
                 else
                 { wynik = false; }
