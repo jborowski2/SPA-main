@@ -227,6 +227,11 @@ namespace ASP_main
                 relationType = "Follows*";
                 Eat("FOLLOWS_STAR");
             }
+            else if (CurrentToken.Type == "NEXT_STAR")
+            {
+                relationType = "Next*";
+                Eat("NEXT_STAR");
+            }
             else
             {
                 relationType = CurrentToken.Value;

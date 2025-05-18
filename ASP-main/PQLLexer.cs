@@ -26,6 +26,8 @@ namespace ASP_main
     ("FOLLOWS", @"\bFollows\b(?!\*)"),
     ("FOLLOWS_STAR", @"\bFollows\*"),
     ("FOLLOWS", @"\bFollows\b(?!\*)"),
+    ("NEXT", @"\bNext\b(?!\*)"),
+    ("NEXT_STAR", @"\bNext\*"),
     ("PATTERN", @"\bpattern\b"),
     ("WITH", @"\bwith\b"),
     ("AND", @"\band\b"),

@@ -60,6 +60,16 @@ namespace ASP_main
 
         #endregion
 
+        #region Next Relation
+        public Dictionary<string, List<string>> Next { get; private set; }
+        public HashSet<(string, string)> IsNext { get; private set; }
+        #endregion
+
+        #region NextStar Relation
+        public Dictionary<string, List<string>> NextStar { get; private set; }
+        public HashSet<(string, string)> IsNextStar { get; private set; }
+        #endregion
+
         #region Helpers
         public HashSet<string> ConstValues { get; private set; }
 
@@ -99,6 +109,12 @@ namespace ASP_main
             CallsStar = new Dictionary<string, List<string>>();
             CalledStar = new Dictionary<string, List<string>>();
 
+            Next = new Dictionary<string, List<string>>();
+            IsNext = new HashSet<(string, string)>();
+
+            NextStar = new Dictionary<string, List<string>>();
+            IsNextStar = new HashSet<(string, string)>();
+
             Stmts = new HashSet<string>();
             ConstValues = new HashSet<string>();
             Assings = new HashSet<string>();
@@ -133,6 +149,8 @@ namespace ASP_main
             PopulateParent(Root);
             PopulateModifiesAndUses(Root);
             PopulateCalls(Root);
+            PopulateNext(Root);
+            ComputeNextStar();
         }
 
         private void PopulateFollows(ASTNode node)
@@ -272,6 +290,146 @@ namespace ASP_main
                         if (p == procName) AddUses(stmt, v);
                 }
             }
+        }
+
+        private void PopulateNext(ASTNode node)
+        {
+            if (node == null) return;
+
+            if (node.Type == "procedure")
+            {
+                var stmtLst = node.Children.FirstOrDefault(c => c.Type == "stmtLst");
+                if (stmtLst != null)
+                    BuildNextFromStmtLst(stmtLst, null);
+            }
+
+            foreach (var child in node.Children)
+                PopulateNext(child);
+        }
+
+        private void BuildNextFromStmtLst(ASTNode stmtLst, ASTNode followUp)
+        {
+            for (int i = 0; i < stmtLst.Children.Count; i++)
+            {
+                var current = stmtLst.Children[i];
+                ASTNode next = (i + 1 < stmtLst.Children.Count) ? stmtLst.Children[i + 1] : followUp;
+
+                if (current.Type == "assign" || current.Type == "call")
+                {
+                    if (next != null)
+                        AddNextRelation(current.LineNumber.Value.ToString(), next.LineNumber.Value.ToString());
+                }
+                else if (current.Type == "while")
+                {
+                    var whileHeader = current;
+                    var whileBody = current.Children.FirstOrDefault(); // stmtLst
+
+                    if (whileBody != null && whileBody.Children.Any())
+                    {
+                        // 1. while -> first in body
+                        AddNextRelation(whileHeader.LineNumber.Value.ToString(),
+                            whileBody.Children.First().LineNumber.Value.ToString());
+
+                        // 2. last in body -> while
+                        var lastInBody = whileBody.Children.Last();
+                        AddNextRelation(lastInBody.LineNumber.Value.ToString(),
+                            whileHeader.LineNumber.Value.ToString());
+
+                        // Rekurencja wewnątrz while
+                        BuildNextFromStmtLst(whileBody, whileHeader);
+                    }
+
+                    // 3. while -> instrukcja po pętli
+                    if (next != null)
+                    {
+                        AddNextRelation(whileHeader.LineNumber.Value.ToString(), next.LineNumber.Value.ToString());
+                    }
+                }
+                else if (current.Type == "if")
+                {
+                    var ifHeader = current;
+                    var thenBlock = ifHeader.Children[0];
+                    var elseBlock = ifHeader.Children[1];
+
+                    if (thenBlock.Children.Any())
+                        AddNextRelation(ifHeader.LineNumber.Value.ToString(),
+                            thenBlock.Children.First().LineNumber.Value.ToString());
+
+                    if (elseBlock.Children.Any())
+                        AddNextRelation(ifHeader.LineNumber.Value.ToString(),
+                            elseBlock.Children.First().LineNumber.Value.ToString());
+
+                    // Po THEN i ELSE przechodzimy dalej
+                    if (next != null)
+                    {
+                        var lastThen = thenBlock.Children.LastOrDefault();
+                        var lastElse = elseBlock.Children.LastOrDefault();
+
+                        if (lastThen != null)
+                            AddNextRelation(lastThen.LineNumber.Value.ToString(), next.LineNumber.Value.ToString());
+
+                        if (lastElse != null)
+                            AddNextRelation(lastElse.LineNumber.Value.ToString(), next.LineNumber.Value.ToString());
+                    }
+
+                    // Rekurencja
+                    BuildNextFromStmtLst(thenBlock, next);
+                    BuildNextFromStmtLst(elseBlock, next);
+                }
+            }
+        }
+
+        private void AddNextRelation(string from, string to)
+        {
+            if (!Next.ContainsKey(from))
+                Next[from] = new List<string>();
+
+            if (!Next[from].Contains(to))
+                Next[from].Add(to);
+
+            IsNext.Add((from, to));
+        }
+
+        private void ComputeNextStar()
+        {
+            foreach (var entry in Next)
+            {
+                var visited = new HashSet<string>();
+                var stack = new Stack<string>();
+                stack.Push(entry.Key);
+
+                while (stack.Count > 0)
+                {
+                    var current = stack.Pop();
+
+                    if (!visited.Contains(current))
+                    {
+                        visited.Add(current);
+
+                        if (Next.ContainsKey(current))
+                        {
+                            foreach (var neighbor in Next[current])
+                            {
+                                stack.Push(neighbor);
+
+                                // Dodaj relację Next*(entry.Key, neighbor)
+                                AddNextStarRelation(entry.Key, neighbor);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private void AddNextStarRelation(string from, string to)
+        {
+            if (!NextStar.ContainsKey(from))
+                NextStar[from] = new List<string>();
+
+            if (!NextStar[from].Contains(to))
+                NextStar[from].Add(to);
+
+            IsNextStar.Add((from, to));
         }
 
         private IEnumerable<string> GetConstatntsFromExpression(ASTNode exprNode)

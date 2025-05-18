@@ -502,6 +502,84 @@ namespace ASP_main
                     }
 
                 }
+                else if (relation.Type.Equals("Next", StringComparison.OrdinalIgnoreCase))
+                {
+                    bool arg1IsInt = int.TryParse(relation.Arg1, out int line1);
+                    bool arg2IsInt = int.TryParse(relation.Arg2, out int line2);
+
+                    if (arg1IsInt && arg2IsInt)
+                    {
+                        if (_pkb.IsNext.Contains((line1.ToString(), line2.ToString())))
+                        {
+                            if (query.Selected.Name == "BOOLEAN")
+                                results.Add("true");
+                            else
+                                results.Add(line2.ToString());
+                        }
+                        else if (query.Selected.Name == "BOOLEAN")
+                        {
+                            results.Add("false");
+                        }
+                    }
+                    else if (arg1IsInt)
+                    {
+                        if (_pkb.Next.ContainsKey(line1.ToString()))
+                            results.UnionWith(_pkb.Next[line1.ToString()]);
+                    }
+                    else if (arg2IsInt)
+                    {
+                        results.UnionWith(_pkb.Next
+                            .Where(kv => kv.Value.Contains(line2.ToString()))
+                            .Select(kv => kv.Key));
+                    }
+                    else
+                    {
+                        results.UnionWith(_pkb.IsNext
+                            .Where(pair =>
+                                (relation.Arg1 == "_" || pair.Item1 == relation.Arg1) &&
+                                (relation.Arg2 == "_" || pair.Item2 == relation.Arg2))
+                            .Select(pair => $"{pair.Item1} {pair.Item2}"));
+                    }
+                }
+                else if (relation.Type.Equals("Next*", StringComparison.OrdinalIgnoreCase))
+                {
+                    bool arg1IsInt = int.TryParse(relation.Arg1, out int line1);
+                    bool arg2IsInt = int.TryParse(relation.Arg2, out int line2);
+
+                    if (arg1IsInt && arg2IsInt)
+                    {
+                        if (_pkb.IsNextStar.Contains((line1.ToString(), line2.ToString())))
+                        {
+                            if (query.Selected.Name == "BOOLEAN")
+                                results.Add("true");
+                            else
+                                results.Add(line2.ToString());
+                        }
+                        else if (query.Selected.Name == "BOOLEAN")
+                        {
+                            results.Add("false");
+                        }
+                    }
+                    else if (arg1IsInt)
+                    {
+                        if (_pkb.NextStar.ContainsKey(line1.ToString()))
+                            results.UnionWith(_pkb.NextStar[line1.ToString()]);
+                    }
+                    else if (arg2IsInt)
+                    {
+                        results.UnionWith(_pkb.NextStar
+                            .Where(kv => kv.Value.Contains(line2.ToString()))
+                            .Select(kv => kv.Key));
+                    }
+                    else
+                    {
+                        results.UnionWith(_pkb.IsNextStar
+                            .Where(pair =>
+                                (relation.Arg1 == "_" || pair.Item1 == relation.Arg1) &&
+                                (relation.Arg2 == "_" || pair.Item2 == relation.Arg2))
+                            .Select(pair => $"{pair.Item1} {pair.Item2}"));
+                    }
+                }
 
                 if (results.Count > 0)
                 {
