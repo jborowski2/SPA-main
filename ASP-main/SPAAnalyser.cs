@@ -232,20 +232,18 @@ namespace ASP_main
                     } else {
                         if (query.PatternClauses[0].LeftClose && query.PatternClauses[0].RightClose) {
                             right = FindRightPatternStrict(assignNodeChild, queryNodeChild);
-                        } else if (query.PatternClauses[0].LeftClose && !query.PatternClauses[0].RightClose) {
-                            right = FindRightPatternStrictLeft(assignNodeChild, queryNodeChild);
-                        } else if (!query.PatternClauses[0].LeftClose && query.PatternClauses[0].RightClose) {
-                            right = FindRightPatternStrictRight(assignNodeChild, queryNodeChild);
                         } else if (!query.PatternClauses[0].LeftClose && !query.PatternClauses[0].RightClose) {
                             right = FindRightPattern(assignNodeChild, queryNodeChild);
                         }
                     }
 
                     if (left && right) {
-                        Console.WriteLine(assignNode.LineNumber);
+                        Console.Write(assignNode.LineNumber + ",");
                     }
                 }
             }
+
+            Console.WriteLine();
 
 
             foreach (var relation in updatedRelations)
@@ -704,13 +702,19 @@ namespace ASP_main
             return false;
         }
 
-
-        private bool FindRightPatternStrictRight(ASTNode pkbAssign, ASTNode queryAssign) {
-
-            return false;
-        }
-
         private bool FindRightPattern(ASTNode pkbAssign, ASTNode queryAssign) {
+            if (FindRightPatternStrict(pkbAssign, queryAssign))
+                return true;
+
+            // jeśli pkbAssign jest null to nie ma co dalej przeszukiwać
+            if (pkbAssign == null)
+                return false;
+
+            // rekurencyjnie sprawdzamy wszystkie dzieci pkbAssign
+            foreach (var child in pkbAssign.Children) {
+                if (FindRightPattern(child, queryAssign))
+                    return true;
+            }
 
             return false;
         }
