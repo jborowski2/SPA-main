@@ -53,7 +53,12 @@ namespace ASP_main
                     Eat("SUCH_THAT");
                     var relation = ParseRelation();
                     query.Relations.Add(relation);
-                }
+                } 
+                else if (string.Equals(CurrentToken.Type, "PATTERN", StringComparison.OrdinalIgnoreCase)) {
+                    Eat("PATTERN");
+                    var patternClause = ParsePattern();
+                    query.PatternClauses.Add(patternClause);
+                } 
                 else if (string.Equals(CurrentToken.Type, "WITH", StringComparison.OrdinalIgnoreCase))
                 {
                     Eat("WITH");
@@ -264,6 +269,78 @@ namespace ASP_main
 
             return new Relation(relationType, arg1, arg2);
         }
+
+        private PatternClause ParsePattern() {
+            var assignSynonym = CurrentToken.Value;
+            Eat("NAME");
+
+            Eat("LPAREN");
+
+            var leftArg = CurrentToken.Value;
+            if (CurrentToken.Type == "QUOTE") {
+                Eat("QUOTE");
+                leftArg = CurrentToken.Value;
+                Eat("NAME");
+                Eat("QUOTE");
+            } else if (CurrentToken.Type == "UNDERSCORE") {
+                Eat("UNDERSCORE");
+            }
+
+            Eat("COMMA");
+
+            var rightArg = "";
+            var leftClose = true;
+            var rightClose = true;
+
+            if (CurrentToken.Type == "UNDERSCORE") {
+                Eat("UNDERSCORE");
+
+                leftClose = false;
+            }
+            
+            if (CurrentToken.Type != "RPAREN") {
+                if (CurrentToken.Type == "QUOTE") {
+                    Eat("QUOTE");
+                    while (CurrentToken.Type != "QUOTE") {
+                        rightArg += CurrentToken.Value;
+
+                        Eat(CurrentToken.Type);
+                    }
+                    Eat("QUOTE");
+                }
+
+                if (CurrentToken.Type == "UNDERSCORE") {
+                    Eat("UNDERSCORE");
+
+                    rightClose = false;
+                }
+            } else {
+                rightArg = "_";
+            }
+
+            Eat("RPAREN");
+
+            Eat("SEMICOLON");
+
+            if (rightArg == "") {
+                rightClose = false;
+            }
+
+            string fullExpr = leftArg + "=" + rightArg + ";";
+
+            Lexer lexer = new Lexer(fullExpr);
+            List<Token> tokens = lexer.GetTokens();
+            Parser parser = new Parser(tokens);
+
+            ASTNode assignAst = parser.ParseAssign();
+
+            // testowanie poprawności budowania AST z prawej strony patterna
+            PKB pkb = PKB.GetInstance();
+            pkb.SetRoot(assignAst);
+            pkb.Root.PrintTree();
+
+            return new PatternClause(assignSynonym, assignAst, leftClose, rightClose);
+        }
     }
 
     // PQL Data Structures
@@ -273,6 +350,7 @@ namespace ASP_main
         public Selected Selected { get; set; }
         public List<Relation> Relations { get; } = new List<Relation>();
         public List<WithClause> WithClauses { get; } = new List<WithClause>();
+        public List<PatternClause> PatternClauses { get; } = new List<PatternClause>();
     }
 
     public class WithClause
@@ -287,6 +365,20 @@ namespace ASP_main
         {
             Left = left;
             Right = right;
+        }
+    }
+
+    public class PatternClause {
+        public string AsignSynonym { get; }
+        public ASTNode AssignAST { get; }
+        public bool LeftClose { get; }
+        public bool RightClose { get; }
+
+        public PatternClause(string param, ASTNode arg1, bool arg2, bool arg3) {
+            AsignSynonym = param;
+            AssignAST = arg1;
+            LeftClose = arg2;
+            RightClose = arg3;
         }
     }
 

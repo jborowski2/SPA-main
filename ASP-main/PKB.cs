@@ -1,4 +1,5 @@
 ﻿using SPA_main;
+using System.Xml.Linq;
 
 namespace ASP_main
 {
@@ -70,6 +71,10 @@ namespace ASP_main
         public HashSet<(string, string)> IsNextStar { get; private set; }
         #endregion
 
+        #region Assigns
+        public Dictionary<string, List<ASTNode>> Assign { get; private set; }
+        #endregion
+
         #region Helpers
         public HashSet<string> ConstValues { get; private set; }
 
@@ -115,6 +120,8 @@ namespace ASP_main
             NextStar = new Dictionary<string, List<string>>();
             IsNextStar = new HashSet<(string, string)>();
 
+            Assign = new Dictionary<string, List<ASTNode>>();
+
             Stmts = new HashSet<string>();
             ConstValues = new HashSet<string>();
             Assings = new HashSet<string>();
@@ -151,6 +158,27 @@ namespace ASP_main
             PopulateCalls(Root);
             PopulateNext(Root);
             ComputeNextStar();
+            PopulateAssign(Root);
+        }
+
+        private void PopulateAssign(ASTNode node) {
+            if (node == null) return;
+
+            foreach (var child in node.Children) {
+                PopulateAssign(child);
+            }
+
+            foreach (var child in node.Children) {
+                if (child.Type == "assign" && child.LineNumber.HasValue) {
+                    string key = child.LineNumber.Value.ToString();
+
+                    if (!Assign.ContainsKey(key)) {
+                        Assign[key] = new List<ASTNode>();
+                    }
+
+                    Assign[key].Add(child);
+                }
+            }
         }
 
         private void PopulateFollows(ASTNode node)

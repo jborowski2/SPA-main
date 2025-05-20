@@ -205,6 +205,7 @@ namespace ASP_main
                     }
                 }
 
+
                 // Stwórz nową instancję Relation z zaktualizowanymi argumentami
                 updatedRelations.Add(new Relation(
                      relationType,
@@ -214,7 +215,39 @@ namespace ASP_main
                 
             }
 
-         
+
+            foreach (var kvp in _pkb.Assign) {
+                string variableName = kvp.Key;
+                List<ASTNode> assignments = kvp.Value;
+
+                foreach (var assignNode in assignments) {
+                    bool left = FindLeftPattern(assignNode, query.PatternClauses[0].AssignAST);
+                    bool right = false;
+
+                    ASTNode assignNodeChild = assignNode.Children[0];
+                    ASTNode queryNodeChild = query.PatternClauses[0].AssignAST.Children[0];
+
+                    if (query.PatternClauses[0].AssignAST.Children[0].Value == "_") {
+                        right = true;
+                    } else {
+                        if (query.PatternClauses[0].LeftClose && query.PatternClauses[0].RightClose) {
+                            right = FindRightPatternStrict(assignNodeChild, queryNodeChild);
+                        } else if (query.PatternClauses[0].LeftClose && !query.PatternClauses[0].RightClose) {
+                            right = FindRightPatternStrictLeft(assignNodeChild, queryNodeChild);
+                        } else if (!query.PatternClauses[0].LeftClose && query.PatternClauses[0].RightClose) {
+                            right = FindRightPatternStrictRight(assignNodeChild, queryNodeChild);
+                        } else if (!query.PatternClauses[0].LeftClose && !query.PatternClauses[0].RightClose) {
+                            right = FindRightPattern(assignNodeChild, queryNodeChild);
+                        }
+                    }
+
+                    if (left && right) {
+                        Console.WriteLine(assignNode.LineNumber);
+                    }
+                }
+            }
+
+
             foreach (var relation in updatedRelations)
             {
                 var results = new HashSet<string>();
@@ -621,7 +654,66 @@ namespace ASP_main
           
         }
 
-      
+        private bool FindLeftPattern(ASTNode pkbAssign, ASTNode queryAssign) {
+            if (queryAssign.Value == "_") {
+                return true;
+            } else {
+                if (pkbAssign.Value == queryAssign.Value) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            
+        }
+
+        private bool FindRightPatternStrict(ASTNode? pkbAssign, ASTNode? queryAssign) {
+            // jeśli oba są nullami to są równe
+            if (pkbAssign == null && queryAssign == null)
+                return true;
+
+            // jeśli któryś jest nullem to nie są równe
+            if (pkbAssign == null || queryAssign == null)
+                return false;
+
+            // jeśli wartość lub typ się nie zgadza to nie są równe
+            if (pkbAssign.Value != queryAssign.Value || pkbAssign.Type != queryAssign.Type)
+                return false;
+
+            // pobieramy liczbe kolejnych węzłów 
+            int pkbChildrenCount = pkbAssign.Children.Count;
+            int queryChildrenCount = queryAssign.Children.Count;
+
+            // jeśli liczba kolejnych węzłów nie jest równa to nie są równe assigny
+            if (pkbChildrenCount != queryChildrenCount)
+                return false;
+
+            // jeśli nie mają dzieci to są równe
+            if (pkbChildrenCount == 0 && queryChildrenCount == 0)
+                return true;
+
+            // jeśli mają dziecko to analizujemy dalsze (wchodzimy do węzłów rekursywnie)
+            if (pkbChildrenCount == 1 && queryChildrenCount == 1)
+                return FindRightPatternStrict(pkbAssign.Children[0], queryAssign.Children[0]);
+
+            // jeśli mają dzieci to analizujemy w lewym i prawym węźle
+            if (pkbChildrenCount == 2 && queryChildrenCount == 2)
+                return FindRightPatternStrict(pkbAssign.Children[0], queryAssign.Children[0]) &&
+                       FindRightPatternStrict(pkbAssign.Children[1], queryAssign.Children[1]);
+
+            return false;
+        }
+
+
+        private bool FindRightPatternStrictRight(ASTNode pkbAssign, ASTNode queryAssign) {
+
+            return false;
+        }
+
+        private bool FindRightPattern(ASTNode pkbAssign, ASTNode queryAssign) {
+
+            return false;
+        }
 
         private string FindDirectFollowsLeft(int line)
         {

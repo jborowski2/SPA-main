@@ -54,7 +54,12 @@ namespace ASP_main
     ("RPAREN", @"\)"),
     ("UNDERSCORE", "_"),
     ("EQUALS", "="),
-    ("SKIP", @"[ \t\n]+")
+    ("SKIP", @"[ \t\n]+"),
+
+    // Pattern
+    ("PLUS", "\\+"),
+    ("MINUS", "\\-"),
+    ("MULTIPLY", "\\*"),
 };
         private readonly string _query;
         private readonly List<Token> _tokens = new List<Token>();

@@ -17,7 +17,7 @@ namespace SPA_main
         ("THEN", "then"),
         ("ELSE", "else"),
         ("CALL", "call"),
-        ("NAME", "[a-zA-Z][a-zA-Z0-9#]*"),
+        ("NAME", "[a-zA-Z_][a-zA-Z0-9#_]*"),
         ("NUMBER", "\\d+"),
         ("ASSIGN", "="),
         ("PLUS", "\\+"),
@@ -26,7 +26,6 @@ namespace SPA_main
         ("LBRACE", "\\{"),
         ("RBRACE", "\\}"),
         ("SEMICOLON", ";"),
-        ("SKIP", "[ \\t\\n]+")
     };
 
         private readonly string _code;
