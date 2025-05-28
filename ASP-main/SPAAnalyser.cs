@@ -87,6 +87,10 @@ namespace ASP_main
                         if (!CheckParentRelation(relation.Arg1, relation.Arg2))
                             return ReturnEmpty(query);
                         break;
+                    case "PARENT*":
+                        if (!CheckParentStarRelation(relation.Arg1, relation.Arg2))
+                            return ReturnEmpty(query);
+                        break;
                     case "MODIFIES":
                         if (!CheckModifiesRelation(relation.Arg1, relation.Arg2))
                             return ReturnEmpty(query);
@@ -192,11 +196,17 @@ namespace ASP_main
                 var newRows = new List<Dictionary<string, string>>();
                 string left = relation.Arg1;
                 string right = relation.Arg2.Replace("\"", ""); // oczyszczona wartość
-
+                string leftType = query.Declarations.ContainsKey(left)
+                     ? query.Declarations[left].Type.ToUpper()
+                     : "";
                 // Pobierz dopasowania z PKB w zależności od typu relacji
                 HashSet<string> matchingLefts = relation.Type switch
                 {
                     "Parent" => _pkb.IsParent
+                                        .Where(p => p.Child == right)
+                                        .Select(p => p.Parent)
+                                        .ToHashSet(),
+                    "Parent*" => _pkb.IsParentStar
                                         .Where(p => p.Child == right)
                                         .Select(p => p.Parent)
                                         .ToHashSet(),
@@ -211,25 +221,63 @@ namespace ASP_main
                                         .ToHashSet(),
 
 
-                    "Modifies" => _pkb.IsModifiesStmtVar
-                                        .Where(p => p.Var == right)
-                                        .Select(p => p.Stmt)
-                                        .ToHashSet(),
+                    "Modifies" => leftType == "PROCEDURE"
+    ? _pkb.IsModifiesProcVar
+          .Where(p => p.Var == right)
+          .Select(p => p.Proc)
+          .ToHashSet()
+    : _pkb.IsModifiesStmtVar
+          .Where(p => p.Var == right)
+          .Select(p => p.Stmt)
+          .ToHashSet(),
 
-                    "Uses" => _pkb.IsUsesStmtVar
-                                        .Where(p => p.Var == right)
-                                        .Select(p => p.Stmt)
-                                        .ToHashSet(),
+                    "Uses" =>
+  leftType == "PROCEDURE"
+      ? _pkb.IsUsesProcVar
+            .Where(p => p.Var == right)
+            .Select(p => p.Proc)
+            .ToHashSet()
+          .Union(
+              _pkb.IsUsesProcConst
+                  .Where(p => p.Item2 == right)
+                  .Select(p => p.Item1)
+          )
+          .ToHashSet()
+      : _pkb.IsUsesStmtVar
+            .Where(p => p.Var == right)
+            .Select(p => p.Stmt)
+            .ToHashSet()
+          .Union(
+              _pkb.IsUsesStmtConst
+                  .Where(p => p.Item2 == right)
+                  .Select(p => p.Item1)
+          )
+          .ToHashSet(),
+
+
 
                     "Calls" => _pkb.IsCalls
-                                        .Where(p => p.Callee == right)
-                                        .Select(p => p.Caller)
-                                        .ToHashSet(),
+    .Where(p =>
+        p.Callee == right &&
+        (
+            (leftType == "PROCEDURE" && !int.TryParse(p.Caller, out _)) ||
+            (leftType == "STMT" && int.TryParse(p.Caller, out _))
+        )
+    )
+    .Select(p => p.Caller)
+    .ToHashSet(),
 
                     "Calls*" => _pkb.IsCallsStar
-                                        .Where(p => p.Callee == right)
-                                        .Select(p => p.Caller)
-                                        .ToHashSet(),
+                        .Where(p =>
+                            p.Callee == right &&
+                            (
+                                (leftType == "PROCEDURE" && !int.TryParse(p.Caller, out _)) ||
+                                (leftType == "STMT" && int.TryParse(p.Caller, out _))
+                            )
+                        )
+                        .Select(p => p.Caller)
+                        .ToHashSet(),
+
 
                     "Next" => _pkb.IsNext
                                         .Where(p => p.Item2 == right)
@@ -291,55 +339,87 @@ namespace ASP_main
                 string left = relation.Arg1.Replace("\"", ""); // oczyszczona wartość (stała)
                 string right = relation.Arg2;
 
-                // Pobierz dopasowania z PKB w zależności od typu relacji
+                string rightType = query.Declarations.ContainsKey(right)
+     ? query.Declarations[right].Type.ToUpper()
+     : "";
+
                 HashSet<string> matchingRights = relation.Type switch
                 {
                     "Parent" => _pkb.IsParent
-                                        .Where(p => p.Parent == left)
-                                        .Select(p => p.Child)
-                                        .ToHashSet(),
+                                    .Where(p => p.Parent == left)
+                                    .Select(p => p.Child)
+                                    .ToHashSet(),
+
+                    "Parent*" => _pkb.IsParentStar
+                                    .Where(p => p.Parent == left)
+                                    .Select(p => p.Child)
+                                    .ToHashSet(),
 
                     "Follows" => _pkb.Follows
-                                        .Where(kvp => kvp.Key == left)
-                                        .Select(kvp => kvp.Value)
-                                        .ToHashSet(),
+                                    .Where(p => p.Key == left)
+                                    .Select(p => p.Value)
+                                    .ToHashSet(),
 
                     "Follows*" => _pkb.IsFollowsStar
-                                        .Where(p => p.Item1 == left)
-                                        .Select(p => p.Item2)
-                                        .ToHashSet(),
+                                    .Where(p => p.Item1 == left)
+                                    .Select(p => p.Item2)
+                                    .ToHashSet(),
 
                     "Modifies" => _pkb.IsModifiesStmtVar
-                                        .Where(p => p.Stmt == left)
-                                        .Select(p => p.Var)
-                                        .ToHashSet(),
+                    .Where(p => p.Stmt == left)
+                    .Select(p => p.Var)
+                    .ToHashSet()
+                .Union(
+                    _pkb.IsModifiesProcVar
+                        .Where(p => p.Proc == left)
+                        .Select(p => p.Var)
+                )
+                .ToHashSet(),
 
-                    "Uses" => _pkb.IsUsesStmtVar
-                                        .Where(p => p.Stmt == left)
-                                        .Select(p => p.Var)
-                                        .ToHashSet(),
+                    "Uses" =>
+     rightType == "VARIABLE"
+         ? _pkb.IsUsesStmtVar
+             .Where(p => p.Stmt == left)
+             .Select(p => p.Var)
+             .ToHashSet()
+             .Union(
+                 _pkb.IsUsesProcVar
+                     .Where(p => p.Proc == left)
+                     .Select(p => p.Var)
+             ).ToHashSet()
+         : _pkb.IsUsesStmtConst
+             .Where(p => p.Item1 == left)
+             .Select(p => p.Item2)
+             .ToHashSet()
+             .Union(
+                 _pkb.IsUsesProcConst
+                     .Where(p => p.Item1 == left)
+                     .Select(p => p.Item2)
+             ).ToHashSet(),
+
+
 
                     "Calls" => _pkb.IsCalls
-                                        .Where(p => p.Caller == left)
-                                        .Select(p => p.Callee)
-                                        .ToHashSet(),
+                                    .Where(p => p.Caller == left)
+                                    .Select(p => p.Callee)
+                                    .ToHashSet(),
 
                     "Calls*" => _pkb.IsCallsStar
-                                        .Where(p => p.Caller == left)
-                                        .Select(p => p.Callee)
-                                        .ToHashSet(),
+                                    .Where(p => p.Caller == left)
+                                    .Select(p => p.Callee)
+                                    .ToHashSet(),
 
                     "Next" => _pkb.IsNext
-                                        .Where(p => p.Item1 == left)
-                                        .Select(p => p.Item2)
-                                        .ToHashSet(),
+                                    .Where(p => p.Item1 == left)
+                                    .Select(p => p.Item2)
+                                    .ToHashSet(),
 
                     "Next*" => _pkb.IsNextStar
-                                        .Where(p => p.Item1 == left)
-                                        .Select(p => p.Item2)
-                                        .ToHashSet(),
+                                    .Where(p => p.Item1 == left)
+                                    .Select(p => p.Item2)
+                                    .ToHashSet(),
 
-                    _ => new HashSet<string>() // nieznana relacja
+                    _ => new HashSet<string>()
                 };
 
                 if (matchingRights.Count == 0)
@@ -351,54 +431,81 @@ namespace ASP_main
                 {
                     if (row.ContainsKey(right))
                     {
-                        // Synonim ma już przypisaną wartość — sprawdzamy dopasowanie
                         if (matchingRights.Contains(row[right]))
                         {
-                            newRows.Add(row); // pasuje, zostaje
+                            newRows.Add(row);
                         }
-                        // Jeśli nie pasuje, nie dodajemy go — odpada
                     }
                     else
                     {
-                        // Synonim nie ma przypisanej wartości — tworzymy nowe wiersze
                         foreach (var val in matchingRights)
                         {
-                            var newRow = new Dictionary<string, string>(row); // zachowuje inne synonimy
-                            newRow[right] = val; // dodaje wartość dla synonimu
+                            var newRow = new Dictionary<string, string>(row);
+                            newRow[right] = val;
                             newRows.Add(newRow);
                         }
                     }
                 }
 
-                // Jeśli nie ma żadnych pasujących wierszy — kończymy
                 if (newRows.Count == 0)
                 {
                     return isBoolean ? new List<string> { "False" } : new List<string> { "None" };
                 }
 
-                // Zamieniamy stare wiersze na nowe
                 rows = newRows;
             }
 
 
-           // PrintResults(rows);
+
+            // PrintResults(rows);
 
             foreach (var relation in twoSynonyms)
             {
                 var newRows = new List<Dictionary<string, string>>();
                 string left = relation.Arg1;
                 string right = relation.Arg2;
-
+                string leftType = query.Declarations.ContainsKey(left)
+        ? query.Declarations[left].Type.ToUpper()
+        : "";
+                string rightType = query.Declarations.ContainsKey(right)
+                    ? query.Declarations[right].Type.ToUpper()
+                    : "";
                 // Pobierz wszystkie możliwe pary (lewy, prawy) z PKB
                 HashSet<(string, string)> matchingPairs = relation.Type switch
                 {
                     "Parent" => _pkb.IsParent,
+                    "Parent*" => _pkb.IsParentStar,
                     "Follows" => _pkb.Follows.Select(kvp => (kvp.Key, kvp.Value)).ToHashSet(),
                     "Follows*" => _pkb.IsFollowsStar,
-                    "Modifies" => _pkb.IsModifiesStmtVar,
-                    "Uses" => _pkb.IsUsesStmtVar,
-                    "Calls" => _pkb.IsCalls,
-                    "Calls*" => _pkb.IsCallsStar,
+                    "Uses" => (leftType, rightType) switch
+                    {
+                        ("PROCEDURE", "CONSTANT") => _pkb.IsUsesProcConst,
+                        ("STMT", "CONSTANT") => _pkb.IsUsesStmtConst,
+                        ("PROCEDURE", "VARIABLE") => _pkb.IsUsesProcVar,
+                        ("STMT", "VARIABLE") => _pkb.IsUsesStmtVar,
+                        _ => new HashSet<(string, string)>()
+                    },
+
+                    "Modifies" => (leftType, rightType) switch
+                    {
+                        ("PROCEDURE", "VARIABLE") => _pkb.IsModifiesProcVar,
+                        ("STMT", "VARIABLE") => _pkb.IsModifiesStmtVar,
+                        _ => new HashSet<(string, string)>()
+                    },
+
+                    "Calls" => _pkb.IsCalls
+             .Where(p =>
+                 ((leftType == "PROCEDURE" && !int.TryParse(p.Caller, out _)) ||
+                  (leftType == "STMT" && int.TryParse(p.Caller, out _))) &&
+                 (rightType == "PROCEDURE")) // Callee zawsze musi być procedurą
+             .ToHashSet(),
+
+                    "Calls*" => _pkb.IsCallsStar
+                        .Where(p =>
+                            ((leftType == "PROCEDURE" && !int.TryParse(p.Caller, out _)) ||
+                             (leftType == "STMT" && int.TryParse(p.Caller, out _))) &&
+                            (rightType == "PROCEDURE"))
+                        .ToHashSet(),
                     "Next" => _pkb.IsNext,
                     "Next*" => _pkb.IsNextStar,
                     _ => new HashSet<(string, string)>()
@@ -748,6 +855,11 @@ namespace ASP_main
             return _pkb.IsParent.Contains((arg1, arg2));
         }
 
+        private bool CheckParentStarRelation(string arg1, string arg2)
+        {
+            return _pkb.IsParentStar.Contains((arg1, arg2));
+        }
+
         private bool CheckFollowsRelation(string arg1, string arg2)
         {
             return _pkb.Follows.TryGetValue(arg1, out var actualBefore) && actualBefore == arg2;
@@ -776,7 +888,9 @@ namespace ASP_main
             // Sprawdzenie: instrukcja używa zmiennej
             return _pkb.IsUsesStmtVar.Contains((arg1, arg2)) ||
                    _pkb.IsUsesProcVar.Contains((arg1, arg2)) ||
-                   _pkb.IsUsesStmtConst.Contains((arg1, arg2)); 
+                   _pkb.IsUsesStmtConst.Contains((arg1, arg2))||
+                   _pkb.IsUsesProcConst.Contains((arg1, arg2));
+            
         }
 
         private bool CheckCallsRelation(string arg1, string arg2)

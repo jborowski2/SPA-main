@@ -137,84 +137,83 @@ namespace ASP_main
 
         public WithArgument ParseWithArgument()
         {
-            // Case 1: Attribute reference (like v.varName)
+            // Case 1: Attribute reference (like v.varName or s.stmt#)
             if (CurrentToken.Type == "NAME" && NextToken?.Type == "DOT")
             {
                 var refName = CurrentToken.Value;
                 Eat("NAME");
                 Eat("DOT");
-                string attrName;
-                // Obsługa różnych atrybutów
+
                 if (CurrentToken.Type == "STMT")
                 {
                     Eat("STMT");
                     return new WithArgument(refName, "stmt#")
                     {
-                        LineNumber = CurrentToken?.LineNumber // Przypisanie numeru linii
+                        LineNumber = CurrentToken?.LineNumber
                     };
                 }
-                else
-                if (CurrentToken.Type == "VAR_ATTR" || CurrentToken.Value == "varName" || CurrentToken.Type == "NUM_ATTR")
+                else if (CurrentToken.Type == "VAR_ATTR" || CurrentToken.Value == "varName")
                 {
                     Eat(CurrentToken.Type);
                     return new WithArgument(refName, "varName");
                 }
-                else if (CurrentToken.Type == "QUOTE")
+                else if (CurrentToken.Type == "NUM_ATTR" || CurrentToken.Value == "value")
                 {
-                    Eat("QUOTE");
-                    var value = CurrentToken.Value;
-                    Eat("NAME");
-                    Eat("QUOTE");
-                    return new WithArgument(value, isValue: true);
+                    Eat(CurrentToken.Type);
+                    return new WithArgument(refName, "value");
                 }
-                // Case 3: Simple reference (variable name)
-                else if (CurrentToken.Type == "NAME")
+                else if (CurrentToken.Type == "PROC_ATTR" || CurrentToken.Value == "procName")
                 {
-                    var value = CurrentToken.Value;
-                    Eat("NAME");
-                    return new WithArgument(value, isValue: false);
-                }
-                else if (CurrentToken.Type == "NUMBER")
-                {
-                    var value = CurrentToken.Value;
-                    Eat("NUMBER");
-                    return new WithArgument(value, isValue: false);
+                    Eat(CurrentToken.Type);
+                    return new WithArgument(refName, "procName");
                 }
                 else
                 {
                     throw new Exception($"Unexpected attribute: {CurrentToken.Value}");
                 }
-
-                
             }
-            // Case 2: Quoted string value
+
+            else if (CurrentToken.Type == "NAME" && NextToken?.Type == "EQUALS")
+            {
+                var value = CurrentToken.Value;
+                Eat("NAME");
+                return new WithArgument(value, "stmt#")
+                {
+                    LineNumber = CurrentToken?.LineNumber
+                };
+            }
+            // Case 2: Quoted string constant (e.g., "x")
             else if (CurrentToken.Type == "QUOTE")
             {
                 Eat("QUOTE");
                 var value = CurrentToken.Value;
-                Eat("NAME"); // Albo inny odpowiedni typ tokena dla wartości
+                Eat("NAME");
                 Eat("QUOTE");
                 return new WithArgument(value, isValue: true);
             }
-            // Case 3: Numeric value
+
+            // Case 3: Numeric constant (e.g., 4)
             else if (CurrentToken.Type == "NUMBER")
             {
                 var value = CurrentToken.Value;
                 Eat("NUMBER");
                 return new WithArgument(value, isValue: true);
             }
-            // Case 4: Simple reference (variable name)
+
+            // Case 4: Simple reference (e.g., n, v) — traktowane jako synonim
             else if (CurrentToken.Type == "NAME")
             {
                 var value = CurrentToken.Value;
                 Eat("NAME");
-                return new WithArgument(value, isValue: true);
+                return new WithArgument(value, isValue: false);
             }
+
             else
             {
                 throw new Exception($"Unexpected token in with clause: {CurrentToken}");
             }
         }
+
 
 
         public List<Selected> ParseSelected()
