@@ -19,6 +19,10 @@ namespace ASP_main
 
         private Token CurrentToken => _index < _tokens.Count ? _tokens[_index] : null;
         private Token NextToken => _index + 1 < _tokens.Count ? _tokens[_index + 1] : null;
+
+        private enum ClauseType { None, SuchThat, With, Pattern }
+        private ClauseType lastClause = ClauseType.None;
+
         public void Eat(string type)
         {
             if (CurrentToken != null && string.Equals(CurrentToken.Type, type, StringComparison.OrdinalIgnoreCase))
@@ -53,32 +57,41 @@ namespace ASP_main
                     Eat("SUCH_THAT");
                     var relation = ParseRelation();
                     query.Relations.Add(relation);
-                } 
-                else if (string.Equals(CurrentToken.Type, "PATTERN", StringComparison.OrdinalIgnoreCase)) {
+                    lastClause = ClauseType.SuchThat;
+                }
+                else if (string.Equals(CurrentToken.Type, "PATTERN", StringComparison.OrdinalIgnoreCase))
+                {
                     Eat("PATTERN");
                     var patternClause = ParsePattern();
                     query.PatternClauses.Add(patternClause);
-                } 
+                    lastClause = ClauseType.Pattern;
+                }
                 else if (string.Equals(CurrentToken.Type, "WITH", StringComparison.OrdinalIgnoreCase))
                 {
                     Eat("WITH");
                     var withClause = ParseWithClause();
-                    query.WithClauses.Add(withClause);           
+                    query.WithClauses.Add(withClause);
+                    lastClause = ClauseType.With;
                 }
                 else if (string.Equals(CurrentToken.Type, "AND", StringComparison.OrdinalIgnoreCase))
                 {
                     Eat("AND");
-                    // Obsługa AND - podobna do SUCH_THAT/WITH w zależności od następnego tokenu
-                    if ( NextToken?.Type == "DOT")
+                    switch (lastClause)
                     {
-                       
-                        var withClause = ParseWithClause();
-                        query.WithClauses.Add(withClause);
-                    }
-                    else
-                    {
-                        var relation = ParseRelation();
-                        query.Relations.Add(relation);
+                        case ClauseType.With:
+                            var withClause = ParseWithClause();
+                            query.WithClauses.Add(withClause);
+                            break;
+                        case ClauseType.SuchThat:
+                            var relation = ParseRelation();
+                            query.Relations.Add(relation);
+                            break;
+                        case ClauseType.Pattern:
+                            var pattern = ParsePattern();
+                            query.PatternClauses.Add(pattern);
+                            break;
+                        default:
+                            throw new Exception("AND without preceding clause");
                     }
                 }
                 else
@@ -202,22 +215,57 @@ namespace ASP_main
                 throw new Exception($"Unexpected token in with clause: {CurrentToken}");
             }
         }
-    
 
-        public Selected ParseSelected()
+
+        public List<Selected> ParseSelected()
+        {
+            var selectedItems = new List<Selected>();
+
+            // Sprawdzamy czy to krotka (zaczyna się od '<')
+            if (CurrentToken.Type == "LESS_THAN")
+            {
+                Eat("LESS_THAN");
+
+                // Parsujemy pierwszy element
+                selectedItems.Add(ParseSingleSelectedItem());
+
+                // Parsujemy kolejne elementy oddzielone przecinkami
+                while (CurrentToken.Type == "COMMA")
+                {
+                    Eat("COMMA");
+                    selectedItems.Add(ParseSingleSelectedItem());
+                }
+
+                Eat("GREATER_THAN");
+            }
+            else
+            {
+                // Pojedynczy element selected
+                selectedItems.Add(ParseSingleSelectedItem());
+            }
+
+            return selectedItems;
+        }
+
+        private Selected ParseSingleSelectedItem()
         {
             if (CurrentToken.Type == "NAME")
             {
                 var name = CurrentToken.Value;
                 Eat("NAME");
+
+              
                 return new Selected(name);
             }
-            else
+            else if (CurrentToken.Value == "BOOLEAN")
             {
-                throw new Exception($"Unexpected token in selected: {CurrentToken}");
+                var name = CurrentToken.Value;
+                Eat("NAME");
+                return new Selected(name);
             }
-        }
 
+            throw new Exception($"Unexpected token in selected: {CurrentToken}");
+        }
         public Relation ParseRelation()
         {
             var relationType = CurrentToken.Value;
@@ -247,7 +295,17 @@ namespace ASP_main
             Eat("LPAREN");
 
             var arg1 = CurrentToken.Value;
-            Eat(CurrentToken.Type); // Could be NAME or NUMBER
+            if (CurrentToken.Type == "QUOTE")
+            {
+                Eat("QUOTE");
+                arg1 = CurrentToken.Value;
+                Eat("NAME");
+                Eat("QUOTE");
+            }
+            else
+            {
+                Eat(CurrentToken.Type);
+            } 
 
             Eat("COMMA");
 
@@ -317,10 +375,15 @@ namespace ASP_main
             } else {
                 rightArg = "_";
             }
-
+            if(CurrentToken.Type=="RPAREN")
             Eat("RPAREN");
-
-            Eat("SEMICOLON");
+            else
+            {
+                Eat("COMMA");
+                Eat("UNDERSCORE");
+                Eat("RPAREN");
+                rightArg = "_";
+            }
 
             if (rightArg == "") {
                 rightClose = false;
@@ -337,7 +400,7 @@ namespace ASP_main
             // testowanie poprawności budowania AST z prawej strony patterna
             PKB pkb = PKB.GetInstance();
             pkb.SetRoot(assignAst);
-            pkb.Root.PrintTree();
+           // pkb.Root.PrintTree();
 
             return new PatternClause(assignSynonym, assignAst, leftClose, rightClose);
         }
@@ -347,7 +410,7 @@ namespace ASP_main
     public class PQLQuery
     {
         public Dictionary<string, Declaration> Declarations { get; } = new Dictionary<string, Declaration>();
-        public Selected Selected { get; set; }
+        public List<Selected> Selected { get; set; } = new List<Selected>();
         public List<Relation> Relations { get; } = new List<Relation>();
         public List<WithClause> WithClauses { get; } = new List<WithClause>();
         public List<PatternClause> PatternClauses { get; } = new List<PatternClause>();
@@ -420,6 +483,7 @@ namespace ASP_main
         public string Type { get; }  // np. "STMT", "VARIABLE", "PROCEDURE"
         public string Name { get; }  // np. "s", "v", "p"
         public Dictionary<string, string> Attributes { get; } = new Dictionary<string, string>();
+
 
         public Declaration(string type, string name)
         {

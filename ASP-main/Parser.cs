@@ -174,11 +174,11 @@ namespace SPA_main
                 Eat("NUMBER");
                 return new ASTNode("const", term);
             }
-            else if (CurrentToken.Type == "LBRACE")
+            else if (CurrentToken.Type == "LPAREN")
             {
-                Eat("LBRACE");
+                Eat("LPAREN");
                 var node = ParseExpr();
-                Eat("RBRACE");
+                Eat("RPAREN");
                 return node;
             }
             else

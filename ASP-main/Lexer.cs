@@ -25,6 +25,8 @@ namespace SPA_main
         ("MULTIPLY", "\\*"),
         ("LBRACE", "\\{"),
         ("RBRACE", "\\}"),
+        ("LPAREN", "\\("),
+        ("RPAREN", "\\)"),
         ("SEMICOLON", ";"),
     };
 

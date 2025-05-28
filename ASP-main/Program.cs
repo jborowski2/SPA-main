@@ -179,7 +179,7 @@ namespace SPA_main
             //Console.WriteLine("\nKoniec wypisywania słowników i zbiorów.");
 
             Console.WriteLine("Ready");
-
+          
             //   
             // Process PQL query
             //   string query = " stmt s, s1; Select s such that Modifies (s, t)";

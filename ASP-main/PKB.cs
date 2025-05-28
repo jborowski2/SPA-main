@@ -29,6 +29,7 @@ namespace ASP_main
 
         #region Follows Relation
         public Dictionary<string, string> Follows { get; private set; }
+        public HashSet<(string, string)> IsFollowsStar { get; private set; }
         #endregion
 
         #region Parent Relation
@@ -156,11 +157,28 @@ namespace ASP_main
             PopulateParent(Root);
             PopulateModifiesAndUses(Root);
             PopulateCalls(Root);
+            PropagateModifiesAndUsesOverCalls();
+            RecomputeWhileIfModifiesAndUses();
             PopulateNext(Root);
             ComputeNextStar();
             PopulateAssign(Root);
+            ComputeFollowsStar();
         }
+        private void ComputeFollowsStar()
+        {
+            IsFollowsStar = new HashSet<(string, string)>();
 
+            foreach (var stmt in Follows.Keys)
+            {
+                string current = stmt;
+                while (Follows.ContainsKey(current))
+                {
+                    var next = Follows[current];
+                    IsFollowsStar.Add((stmt, next));
+                    current = next;
+                }
+            }
+        }
         private void PopulateAssign(ASTNode node) {
             if (node == null) return;
 
@@ -180,7 +198,27 @@ namespace ASP_main
                 }
             }
         }
+        private void RecomputeWhileIfModifiesAndUses()
+        {
+            // PRZEJDŹ WSZYSTKIE STMTY (w PKB masz je w Stmts)
+            foreach (var stmt in Stmts)
+            {
+                if (LineToNode.TryGetValue(int.Parse(stmt), out var node))
+                {
+                    if (node.Type == "while" || node.Type == "if")
+                    {
+                        // ZBIERZ Z CIAŁA
+                        var modVars = GetAllModifiedVariables(node);
+                        foreach (var varName in modVars)
+                            AddModifies(stmt, varName);
 
+                        var useVars = GetAllUsedVariables(node);
+                        foreach (var varName in useVars)
+                            AddUses(stmt, varName);
+                    }
+                }
+            }
+        }
         private void PopulateFollows(ASTNode node)
         {
             if (node == null) return;
@@ -230,9 +268,32 @@ namespace ASP_main
         {
             if (node == null) return;
 
-            // Najpierw przetwarzamy dzieci
             foreach (var child in node.Children)
                 PopulateModifiesAndUses(child);
+
+            if (node.LineNumber.HasValue)
+            {
+                string stmt = node.LineNumber.Value.ToString();
+
+                if (node.Type == "assign")
+                {
+                    AddModifies(stmt, node.Value);
+                    var exprNode = node.Children.FirstOrDefault();
+                    foreach (var varName in GetVariablesFromExpression(exprNode))
+                        AddUses(stmt, varName);
+                    foreach (var constName in GetConstatntsFromExpression(exprNode))
+                        IsUsesStmtConst.Add((stmt, constName));
+                }
+                else if (node.Type == "while" || node.Type == "if")
+                {
+                    AddUses(stmt, node.Value);
+                    foreach (var varName in GetAllModifiedVariables(node))
+                        AddModifies(stmt, varName);
+                    foreach (var varName in GetAllUsedVariables(node))
+                        AddUses(stmt, varName);
+                }
+                // <-- call statement: na razie nie ruszasz!
+            }
 
             if (node.Type == "procedure")
             {
@@ -254,68 +315,105 @@ namespace ASP_main
                         foreach (var varName in UsesStmt[stmt])
                             IsUsesProcVar.Add((procName, varName));
                 }
-
-                // Krok 2: Dodaj Modifies/Uses z wywoływanych procedur (z przechodniością)
-                if (Calls.ContainsKey(procName))
-                {
-                    var processed = new HashSet<string>();
-                    var queue = new Queue<string>(Calls[procName]);
-
-                    while (queue.Count > 0)
-                    {
-                        var callee = queue.Dequeue();
-                        if (processed.Contains(callee)) continue;
-                        processed.Add(callee);
-
-                        // Dodaj Modifies/Uses wywoływanej procedury
-                        foreach (var (p, v) in IsModifiesProcVar)
-                            if (p == callee) IsModifiesProcVar.Add((procName, v));
-
-                        foreach (var (p, v) in IsUsesProcVar)
-                            if (p == callee) IsUsesProcVar.Add((procName, v));
-
-                        // Dodaj wywołania zagnieżdżone (ale bez rekurencji)
-                        if (Calls.ContainsKey(callee))
-                            foreach (var newCallee in Calls[callee])
-                                if (!processed.Contains(newCallee))
-                                    queue.Enqueue(newCallee);
-                    }
-                }
+                // <-- jeszcze nie propaguj wywołań!
             }
-            else if (node.LineNumber.HasValue)
+        }
+        private HashSet<string> GetAllUsedVariables(ASTNode node)
+        {
+            HashSet<string> usedVars = new HashSet<string>();
+
+            if (node == null)
+                return usedVars;
+
+            if (node.LineNumber.HasValue)
             {
                 string stmt = node.LineNumber.Value.ToString();
-               
-                if (node.Type == "assign")
+                if (UsesStmt.ContainsKey(stmt))
                 {
-                    // Modifies: lewa strona
-                    AddModifies(stmt, node.Value);
-
-                    var exprNode = node.Children.FirstOrDefault();
-                    // Uses: prawa strona
-                    foreach (var varName in GetVariablesFromExpression(exprNode))
-                        AddUses(stmt, varName);
-                    foreach (var constName in GetConstatntsFromExpression(exprNode))
-                        IsUsesStmtConst.Add((stmt, constName));
+                    foreach (var varName in UsesStmt[stmt])
+                        usedVars.Add(varName);
                 }
-                else if (node.Type == "while" || node.Type == "if")
-                {
-                    // Uses: zmienna sterująca
-                    AddUses(stmt, node.Value);
+            }
 
-                    // Modifies: wszystko w ciele
-                    foreach (var varName in GetAllModifiedVariables(node))
-                        AddModifies(stmt, varName);
-                }
-                else if (node.Type == "call")
+            foreach (var child in node.Children)
+            {
+                var childVars = GetAllUsedVariables(child);
+                foreach (var varName in childVars)
+                    usedVars.Add(varName);
+            }
+
+            return usedVars;
+        }
+        private void PropagateModifiesAndUsesOverCalls()
+        {
+            // Propaguj przez wywołania PROCEDUR
+            bool changed;
+            do
+            {
+                changed = false;
+                foreach (var (caller, callees) in Calls)
                 {
-                    // Modifies/Uses takie jak wywoływana procedura
+                    foreach (var callee in callees)
+                    {
+                        // MODIFIES
+                        foreach (var (p, v) in IsModifiesProcVar.ToList())
+                        {
+                            if (p == callee && !IsModifiesProcVar.Contains((caller, v)))
+                            {
+                                IsModifiesProcVar.Add((caller, v));
+                                changed = true;
+                            }
+                        }
+                        // USES
+                        foreach (var (p, v) in IsUsesProcVar.ToList())
+                        {
+                            if (p == callee && !IsUsesProcVar.Contains((caller, v)))
+                            {
+                                IsUsesProcVar.Add((caller, v));
+                                changed = true;
+                            }
+                        }
+                    }
+                }
+            } while (changed);
+
+            // Dodaj propagację na statementy call (zawsze PO poprzedniej fazie!)
+            foreach (var node in LineToNode.Values)
+            {
+                if (node.Type == "call")
+                {
+                    string stmt = node.LineNumber.Value.ToString();
                     string procName = node.Value;
                     foreach (var (p, v) in IsModifiesProcVar)
-                        if (p == procName) AddModifies(stmt, v);
-
+                        if (p == procName)
+                            AddModifies(stmt, v);
                     foreach (var (p, v) in IsUsesProcVar)
-                        if (p == procName) AddUses(stmt, v);
+                        if (p == procName)
+                            AddUses(stmt, v);
+                }
+            }
+
+            // Teraz musisz jeszcze raz zebrać Modifies/Uses dla PROCEDUR,
+            // bo nowe statementy call mogły mieć nowe modyfikacje/uses:
+            foreach (var procName in Procedures)
+            {
+                foreach (var node in LineToNode.Values)
+                {
+                    if (node.Type == "procedure" && node.Value == procName)
+                    {
+                        var stmtsInProc = new HashSet<string>();
+                        CollectStatementsInProcedure(node, stmtsInProc);
+
+                        foreach (var stmt in stmtsInProc)
+                        {
+                            if (ModifiesStmt.ContainsKey(stmt))
+                                foreach (var varName in ModifiesStmt[stmt])
+                                    IsModifiesProcVar.Add((procName, varName));
+                            if (UsesStmt.ContainsKey(stmt))
+                                foreach (var varName in UsesStmt[stmt])
+                                    IsUsesProcVar.Add((procName, varName));
+                        }
+                    }
                 }
             }
         }
@@ -616,13 +714,24 @@ namespace ASP_main
             {
                 string stmt = node.LineNumber.Value.ToString();
 
+                // Dodaj modyfikowane bezpośrednio przez statement
                 if (ModifiesStmt.ContainsKey(stmt))
                 {
                     foreach (var varName in ModifiesStmt[stmt])
                         modifiedVars.Add(varName);
                 }
+
+                // Jeżeli to jest call, dorzuć Modifies z procedury wywoływanej (zawsze!)
+                if (node.Type == "call")
+                {
+                    string procName = node.Value;
+                    foreach (var (p, v) in IsModifiesProcVar)
+                        if (p == procName)
+                            modifiedVars.Add(v);
+                }
             }
 
+            // Rekurencyjnie dzieci
             foreach (var child in node.Children)
             {
                 var childVars = GetAllModifiedVariables(child);

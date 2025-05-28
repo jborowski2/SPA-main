@@ -16,6 +16,7 @@ namespace ASP_main
      ("SELECT", @"\bSelect\b"),
     ("SUCH_THAT", @"\bsuch that\b"),
     ("MODIFIES", @"\bModifies\b"),
+    ("CALLS", @"\bCalls\b"),
     ("USES", @"\bUses\b"),
     ("WHILE", @"\bwhile\b"),
     ("IF", @"\bif\b"),
@@ -32,6 +33,7 @@ namespace ASP_main
     ("WITH", @"\bwith\b"),
     ("AND", @"\band\b"),
     ("STMT", @"\bstmt\b"),
+    ("CALL", @"\bcall\b"),
     ("ASSIGN", @"\bassign\b"),
     ("VARIABLE", @"\bvariable\b"),
     ("PROCEDURE", @"\bprocedure\b"),
@@ -55,7 +57,8 @@ namespace ASP_main
     ("UNDERSCORE", "_"),
     ("EQUALS", "="),
     ("SKIP", @"[ \t\n]+"),
-
+    ("LESS_THAN", "<"),
+    ("GREATER_THAN", ">"),
     // Pattern
     ("PLUS", "\\+"),
     ("MINUS", "\\-"),
