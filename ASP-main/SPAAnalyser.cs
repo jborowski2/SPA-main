@@ -189,7 +189,7 @@ namespace ASP_main
             }
 
 
-        //    PrintResults(rows);
+          PrintResults(rows);
 
             foreach (var relation in leftOnlySynonym)
             {
@@ -331,7 +331,7 @@ namespace ASP_main
                 rows = newRows;
             }
 
-            //PrintResults(rows);
+            PrintResults(rows);
 
             foreach (var relation in rightOnlySynonym)
             {
@@ -457,7 +457,7 @@ namespace ASP_main
 
 
 
-            // PrintResults(rows);
+             PrintResults(rows);
 
             foreach (var relation in twoSynonyms)
             {
@@ -582,7 +582,7 @@ namespace ASP_main
             }
 
 
-            // PrintResults(rows);
+             PrintResults(rows);
 
 
             foreach (var pattern in query.PatternClauses)
@@ -614,31 +614,74 @@ namespace ASP_main
                         if (node == null || node.Type.ToUpper() != type)
                             continue;
 
-                        bool leftOk = FindLeftPattern(node, pattern.AssignAST);
-                        if (!leftOk) continue;
+                        var leftNode = pattern.AssignAST; // lewa strona przypisania
+                        string matchedLeftValue = null;
 
-                        var rhs = node.Children.FirstOrDefault(); // prawe wyrażenie (jeśli dotyczy)
+                        bool leftOk = false;
 
-                        bool rightOk = pattern.RightClose
-                            ? FindRightPatternStrict(rhs, pattern.AssignAST.Children[0])
-                            : FindRightPattern(rhs, pattern.AssignAST.Children[0]);
-
-                        if (!rightOk) continue;
-
-                        if (row.ContainsKey(assignSyn))
+                        if (query.Declarations.ContainsKey(leftNode.Value))
                         {
-                            if (row[assignSyn] == line)
+                            // Jeśli już podstawiony — podstaw i sprawdź
+                            if (row.ContainsKey(leftNode.Value))
                             {
-                                newRows.Add(row); // pasuje
+                                var substituted = new ASTNode("var", row[leftNode.Value]);
+                                if (FindLeftPattern(node, substituted))
+                                {
+                                    leftOk = true;
+                                    matchedLeftValue = row[leftNode.Value];
+                                }
+                            }
+                            else
+                            {
+                                // Jeśli nie — przetestuj wszystkie możliwe wartości z domeny synonimu
+                                var domain = query.Declarations[leftNode.Value].Type.ToUpper() switch
+                                {
+                                    "VARIABLE" => _pkb.Variables,
+                                    "CONSTANT" => _pkb.ConstValues,
+                                    _ => new HashSet<string>()
+                                };
+
+                                foreach (var candidate in domain)
+                                {
+                                    var candidateNode = new ASTNode("var", candidate);
+                                    if (FindLeftPattern(node, candidateNode))
+                                    {
+                                        leftOk = true;
+                                        matchedLeftValue = candidate;
+                                        break;
+                                    }
+                                }
                             }
                         }
                         else
                         {
-                            var newRow = new Dictionary<string, string>(row);
-                            newRow[assignSyn] = line;
-                            newRows.Add(newRow);
+                            // Literalna zmienna lub "_"
+                            leftOk = FindLeftPattern(node, leftNode);
                         }
+
+                        if (!leftOk) continue;
+
+                        var rhs = node.Children.FirstOrDefault(); // prawe wyrażenie (jeśli dotyczy)
+                        var rightNode = pattern.AssignAST.Children[0];
+
+                        bool rightOk = pattern.RightClose
+                            ? FindRightPatternStrict(rhs, rightNode)
+                            : FindRightPattern(rhs, rightNode);
+
+                        if (!rightOk) continue;
+
+                        var newRow = new Dictionary<string, string>(row);
+                        newRow[assignSyn] = line;
+
+                        // Dodaj również wartość z lewej strony jeśli to był synonim
+                        if (query.Declarations.ContainsKey(leftNode.Value) && !newRow.ContainsKey(leftNode.Value))
+                        {
+                            newRow[leftNode.Value] = matchedLeftValue;
+                        }
+
+                        newRows.Add(newRow);
                     }
+
                 }
 
                 if (newRows.Count == 0)
@@ -647,7 +690,7 @@ namespace ASP_main
                 rows = newRows;
             }
 
-
+            PrintResults(rows);
 
 
             foreach (var with in query.WithClauses)
@@ -721,7 +764,7 @@ namespace ASP_main
 
 
 
-           // PrintResults(rows);
+           PrintResults(rows);
 
             if (isBoolean)
             {

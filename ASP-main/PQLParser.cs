@@ -45,7 +45,7 @@ namespace ASP_main
                 }
             }
 
-            // Parse select
+            // Parse SELECT
             Eat("SELECT");
             query.Selected = ParseSelected();
 
@@ -55,43 +55,36 @@ namespace ASP_main
                 if (string.Equals(CurrentToken.Type, "SUCH_THAT", StringComparison.OrdinalIgnoreCase))
                 {
                     Eat("SUCH_THAT");
-                    var relation = ParseRelation();
-                    query.Relations.Add(relation);
-                    lastClause = ClauseType.SuchThat;
+                    query.Relations.Add(ParseRelation());
                 }
                 else if (string.Equals(CurrentToken.Type, "PATTERN", StringComparison.OrdinalIgnoreCase))
                 {
                     Eat("PATTERN");
-                    var patternClause = ParsePattern();
-                    query.PatternClauses.Add(patternClause);
-                    lastClause = ClauseType.Pattern;
+                    query.PatternClauses.Add(ParsePattern());
                 }
                 else if (string.Equals(CurrentToken.Type, "WITH", StringComparison.OrdinalIgnoreCase))
                 {
                     Eat("WITH");
-                    var withClause = ParseWithClause();
-                    query.WithClauses.Add(withClause);
-                    lastClause = ClauseType.With;
+                    query.WithClauses.Add(ParseWithClause());
                 }
                 else if (string.Equals(CurrentToken.Type, "AND", StringComparison.OrdinalIgnoreCase))
                 {
                     Eat("AND");
-                    switch (lastClause)
+
+
+
+                    if (string.Equals(CurrentToken.Type, "PATTERN", StringComparison.OrdinalIgnoreCase))
                     {
-                        case ClauseType.With:
-                            var withClause = ParseWithClause();
-                            query.WithClauses.Add(withClause);
-                            break;
-                        case ClauseType.SuchThat:
-                            var relation = ParseRelation();
-                            query.Relations.Add(relation);
-                            break;
-                        case ClauseType.Pattern:
-                            var pattern = ParsePattern();
-                            query.PatternClauses.Add(pattern);
-                            break;
-                        default:
-                            throw new Exception("AND without preceding clause");
+                        Eat("PATTERN");
+                        query.PatternClauses.Add(ParsePattern());
+                    }
+                    else if (IsWithAhead())
+                    {
+                        query.WithClauses.Add(ParseWithClause());
+                    }
+                    else
+                    {
+                        query.Relations.Add(ParseRelation());
                     }
                 }
                 else
@@ -102,6 +95,30 @@ namespace ASP_main
 
             return query;
         }
+
+        // Pomocnicze metody wykrywające typ po składni
+   
+
+        private bool IsPatternAhead()
+        {
+            // Sprawdza czy przed nami wzorzec typu a(v, ...)
+            return CurrentToken.Type == "NAME" && PeekNextToken()?.Type == "LPAREN";
+        }
+
+        private bool IsWithAhead()
+        {
+            // Sprawdza czy przed nami atrybut lub wartość literalna
+            return (CurrentToken.Type == "NAME" && (PeekNextToken()?.Type == "DOT" || PeekNextToken()?.Type == "EQUALS"))
+                   || CurrentToken.Type == "QUOTE"
+                   || CurrentToken.Type == "NUMBER";
+        }
+
+        private Token PeekNextToken()
+        {
+            int currentIndex = _tokens.IndexOf(CurrentToken);
+            return (currentIndex + 1 < _tokens.Count) ? _tokens[currentIndex + 1] : null;
+        }
+
 
         public WithClause ParseWithClause()
         {
@@ -342,7 +359,10 @@ namespace ASP_main
             } else if (CurrentToken.Type == "UNDERSCORE") {
                 Eat("UNDERSCORE");
             }
-
+            else if ( CurrentToken.Type == "NAME")
+            {
+                Eat("NAME");
+            }
             Eat("COMMA");
 
             var rightArg = "";
