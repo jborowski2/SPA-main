@@ -88,6 +88,7 @@ namespace ASP_main
         public HashSet<string> Variables { get; private set; }
         public HashSet<string> Procedures { get; private set; }
         public HashSet<string> Stmts { get; private set; }
+        public HashSet<string> CallStmts { get; private set; }
         #endregion
         #region Constructor
         /// <summary>
@@ -125,7 +126,7 @@ namespace ASP_main
             IsNextStar = new HashSet<(string, string)>();
 
             Assign = new Dictionary<string, List<ASTNode>>();
-
+            CallStmts = new HashSet<string>();
             Stmts = new HashSet<string>();
             ConstValues = new HashSet<string>();
             Assings = new HashSet<string>();
@@ -896,6 +897,9 @@ namespace ASP_main
                     case "if":
                         Ifs.Add(lineNum.ToString());
                         break;
+                    case "call":
+                        CallStmts.Add(lineNum.ToString());
+                        break;
 
                 }
             }
@@ -912,6 +916,9 @@ namespace ASP_main
                     break;
                 case "const":
                     ConstValues.Add(node.Value);
+                    break;
+                case "call":
+                  //  CallStmts.Add(node.Value);
                     break;
 
             }

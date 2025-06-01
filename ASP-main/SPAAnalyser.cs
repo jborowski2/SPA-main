@@ -11,6 +11,7 @@ namespace ASP_main
 {
     public class SPAAnalyzer
     {
+        bool test = false;
         private readonly PKB _pkb;
 
         public  SPAAnalyzer(PKB pkb)
@@ -20,6 +21,7 @@ namespace ASP_main
 
         public void PrintResults(List<Dictionary<string, string>> resultRows)
         {
+            if (!test) return;
             Console.WriteLine("Nowe wykonanie:");
             if (resultRows == null || resultRows.Count == 0)
             {
@@ -186,16 +188,17 @@ namespace ASP_main
                 {
                     return isBoolean ? new List<string> { "False" } : new List<string> { "None" };
                 }
+                PrintResults(rows);
             }
 
 
-          PrintResults(rows);
+
 
             foreach (var relation in leftOnlySynonym)
             {
                 var newRows = new List<Dictionary<string, string>>();
                 string left = relation.Arg1;
-                string right = relation.Arg2.Replace("\"", ""); // oczyszczona wartość
+                string right = relation.Arg2;    //.Replace("\"", ""); // oczyszczona wartość
                 string leftType = query.Declarations.ContainsKey(left)
                      ? query.Declarations[left].Type.ToUpper()
                      : "";
@@ -203,94 +206,80 @@ namespace ASP_main
                 HashSet<string> matchingLefts = relation.Type switch
                 {
                     "Parent" => _pkb.IsParent
-                                        .Where(p => p.Child == right)
-                                        .Select(p => p.Parent)
-                                        .ToHashSet(),
+                                    .Where(p => p.Child == right)
+                                    .Select(p => p.Parent)
+                                    .ToHashSet(),
+
                     "Parent*" => _pkb.IsParentStar
-                                        .Where(p => p.Child == right)
-                                        .Select(p => p.Parent)
-                                        .ToHashSet(),
+                                    .Where(p => p.Child == right)
+                                    .Select(p => p.Parent)
+                                    .ToHashSet(),
 
                     "Follows" => _pkb.Follows
-                                        .Where(kvp => kvp.Value == right)
-                                        .Select(kvp => kvp.Key)
-                                        .ToHashSet(),
-                    "Follows*" => _pkb.IsFollowsStar
-                                        .Where(p => p.Item2 == right)
-                                        .Select(p => p.Item1)
-                                        .ToHashSet(),
+                                    .Where(p => p.Value == right)
+                                    .Select(p => p.Key)
+                                    .ToHashSet(),
 
+                    "Follows*" => _pkb.IsFollowsStar
+                                    .Where(p => p.Item2 == right)
+                                    .Select(p => p.Item1)
+                                    .ToHashSet(),
 
                     "Modifies" => leftType == "PROCEDURE"
-    ? _pkb.IsModifiesProcVar
-          .Where(p => p.Var == right)
-          .Select(p => p.Proc)
-          .ToHashSet()
-    : _pkb.IsModifiesStmtVar
-          .Where(p => p.Var == right)
-          .Select(p => p.Stmt)
-          .ToHashSet(),
+                    ? _pkb.IsModifiesProcVar
+                                        .Where(p => p.Var == right)
+                                        .Select(p => p.Proc)
+                                        .ToHashSet()
+                                    : _pkb.IsModifiesStmtVar
+                                    .Where(p => p.Var == right)
+                                    .Select(p => p.Stmt)
+                                    .ToHashSet(),
 
-                    "Uses" =>
-  leftType == "PROCEDURE"
-      ? _pkb.IsUsesProcVar
-            .Where(p => p.Var == right)
-            .Select(p => p.Proc)
-            .ToHashSet()
-          .Union(
-              _pkb.IsUsesProcConst
-                  .Where(p => p.Item2 == right)
-                  .Select(p => p.Item1)
-          )
-          .ToHashSet()
-      : _pkb.IsUsesStmtVar
-            .Where(p => p.Var == right)
-            .Select(p => p.Stmt)
-            .ToHashSet()
-          .Union(
-              _pkb.IsUsesStmtConst
-                  .Where(p => p.Item2 == right)
-                  .Select(p => p.Item1)
-          )
-          .ToHashSet(),
+                               
 
-
+                    "Uses" => leftType == "PROCEDURE"
+                        ? _pkb.IsUsesProcConst
+                                    .Where(p => p.Item2 == right)
+                                    .Select(p => p.Item1)
+                              .ToHashSet()
+                            .Union(
+                                _pkb.IsUsesProcVar
+                                    .Where(p => p.Var == right)
+                                    .Select(p => p.Proc)
+                            ).ToHashSet()
+                        : _pkb.IsUsesStmtConst
+                              .Where(p => p.Item2 == right)
+                              .Select(p => p.Item1)
+                              .ToHashSet()
+                            .Union(
+                                _pkb.IsUsesStmtVar
+                              .Where(p => p.Var == right)
+                              .Select(p => p.Stmt)
+                            ).ToHashSet(),
 
                     "Calls" => _pkb.IsCalls
-    .Where(p =>
-        p.Callee == right &&
-        (
-            (leftType == "PROCEDURE" && !int.TryParse(p.Caller, out _)) ||
-            (leftType == "STMT" && int.TryParse(p.Caller, out _))
-        )
-    )
-    .Select(p => p.Caller)
-    .ToHashSet(),
+                                .Where(p => p.Callee == right)
+                                .Select(p => p.Caller)
+                                .ToHashSet(),
 
                     "Calls*" => _pkb.IsCallsStar
-                        .Where(p =>
-                            p.Callee == right &&
-                            (
-                                (leftType == "PROCEDURE" && !int.TryParse(p.Caller, out _)) ||
-                                (leftType == "STMT" && int.TryParse(p.Caller, out _))
-                            )
-                        )
-                        .Select(p => p.Caller)
-                        .ToHashSet(),
-
+                                .Where(p => p.Callee == right)
+                                .Select(p => p.Caller)
+                                .ToHashSet(),
 
                     "Next" => _pkb.IsNext
-                                        .Where(p => p.Item2 == right)
-                                        .Select(p => p.Item1)
-                                        .ToHashSet(),
+                                .Where(p => p.Item2 == right)
+                                .Select(p => p.Item1)
+                                .ToHashSet(),
 
                     "Next*" => _pkb.IsNextStar
-                                        .Where(p => p.Item2 == right)
-                                        .Select(p => p.Item1)
-                                        .ToHashSet(),
+                                .Where(p => p.Item2 == right)
+                                .Select(p => p.Item1)
+                                .ToHashSet(),
 
-                    _ => new HashSet<string>() // nieznana relacja
+                    _ => new HashSet<string>()
                 };
+
 
                 if (matchingLefts.Count == 0)
                 {
@@ -309,16 +298,27 @@ namespace ASP_main
                         }
                         // Jeśli nie pasuje, nie dodajemy go — odpada
                     }
+                 
                     else
                     {
                         // Synonim nie ma przypisanej wartości — tworzymy nowe wiersze
                         foreach (var val in matchingLefts)
                         {
-                            var newRow = new Dictionary<string, string>(row); // zachowuje inne synonimy
-                            newRow[left] = val; // dodaje wartość dla synonimu
+                            // Sprawdzenie typu instrukcji, jeśli leftType to konkretny typ stmt
+                            if (int.TryParse(val, out var stmtNum) &&
+                                (leftType == "ASSIGN" || leftType == "WHILE" || leftType == "IF" || leftType == "STMT" || leftType=="CALL" || leftType=="PROCEDURE"))
+                            {
+                                var node = _pkb.GetNodeByLine(stmtNum);
+                                if (node == null || (node.Type.ToUpper() != leftType && leftType!="STMT"))
+                                    continue; // pomiń jeśli niezgodny typ
+                            }
+
+                            var newRow = new Dictionary<string, string>(row);
+                            newRow[left] = val;
                             newRows.Add(newRow);
                         }
                     }
+
                 }
 
                 // Jeśli nie ma żadnych pasujących wierszy — kończymy
@@ -329,9 +329,10 @@ namespace ASP_main
 
                 // Zamieniamy stare wiersze na nowe
                 rows = newRows;
+                PrintResults(rows);
             }
 
-            PrintResults(rows);
+        //   PrintResults(rows);
 
             foreach (var relation in rightOnlySynonym)
             {
@@ -429,16 +430,43 @@ namespace ASP_main
 
                 foreach (var row in rows)
                 {
-                    if (row.ContainsKey(right))
+                    foreach (var val in matchingRights)
                     {
-                        if (matchingRights.Contains(row[right]))
+                        // Jeśli synonim dotyczy typu instrukcji, sprawdź jego zgodność z typem z PKB
+                        if (int.TryParse(val, out var lineNum))
                         {
-                            newRows.Add(row);
+                            var node = _pkb.GetNodeByLine(lineNum);
+                            if (node == null)
+                                continue;
+
+                            var nodeType = node.Type.ToUpper();
+
+                            if (rightType == "ASSIGN" && nodeType != "ASSIGN")
+                                continue;
+                            if (rightType == "WHILE" && nodeType != "WHILE")
+                                continue;
+                            if (rightType == "IF" && nodeType != "IF")
+                                continue;
+                            if (rightType == "CALL" && nodeType != "CALL")
+                                continue;
+                            if (rightType == "STMT" &&
+                                nodeType != "ASSIGN" &&
+                                nodeType != "WHILE" &&
+                                nodeType != "IF" &&
+                                nodeType != "CALL")
+                                continue;
+                            // dla PROG_LINE nie trzeba sprawdzać typu
                         }
-                    }
-                    else
-                    {
-                        foreach (var val in matchingRights)
+
+                        // Jeśli wiersz już ma przypisaną wartość dla synonimu — sprawdź zgodność
+                        if (row.ContainsKey(right))
+                        {
+                            if (row[right] != val)
+                                continue; // niezgodność, pomiń
+                            else
+                                newRows.Add(row); // zgodność, dodaj oryginalny wiersz
+                        }
+                        else
                         {
                             var newRow = new Dictionary<string, string>(row);
                             newRow[right] = val;
@@ -447,17 +475,20 @@ namespace ASP_main
                     }
                 }
 
+
+
                 if (newRows.Count == 0)
                 {
                     return isBoolean ? new List<string> { "False" } : new List<string> { "None" };
                 }
 
                 rows = newRows;
+                PrintResults(rows);
             }
 
 
 
-             PrintResults(rows);
+             //PrintResults(rows);
 
             foreach (var relation in twoSynonyms)
             {
@@ -483,6 +514,10 @@ namespace ASP_main
                         ("STMT", "CONSTANT") => _pkb.IsUsesStmtConst,
                         ("PROCEDURE", "VARIABLE") => _pkb.IsUsesProcVar,
                         ("STMT", "VARIABLE") => _pkb.IsUsesStmtVar,
+                        ("IF", "CONSTANT") => _pkb.IsUsesStmtConst,
+                        ("IF", "VARIABLE") => _pkb.IsUsesStmtVar,
+                        ("WHILE", "CONSTANT") => _pkb.IsUsesStmtConst,
+                        ("WHILE", "VARIABLE") => _pkb.IsUsesStmtVar,
                         _ => new HashSet<(string, string)>()
                     },
 
@@ -490,20 +525,25 @@ namespace ASP_main
                     {
                         ("PROCEDURE", "VARIABLE") => _pkb.IsModifiesProcVar,
                         ("STMT", "VARIABLE") => _pkb.IsModifiesStmtVar,
+                        ("WHILE", "VARIABLE") => _pkb.IsModifiesStmtVar,
+                        ("IF", "VARIABLE") => _pkb.IsModifiesStmtVar,
                         _ => new HashSet<(string, string)>()
                     },
 
                     "Calls" => _pkb.IsCalls
              .Where(p =>
                  ((leftType == "PROCEDURE" && !int.TryParse(p.Caller, out _)) ||
-                  (leftType == "STMT" && int.TryParse(p.Caller, out _))) &&
+                  (leftType == "STMT" && int.TryParse(p.Caller, out _))||
+                   
+                  (leftType == "CALL" && int.TryParse(p.Caller, out _))) &&
                  (rightType == "PROCEDURE")) // Callee zawsze musi być procedurą
              .ToHashSet(),
 
                     "Calls*" => _pkb.IsCallsStar
                         .Where(p =>
                             ((leftType == "PROCEDURE" && !int.TryParse(p.Caller, out _)) ||
-                             (leftType == "STMT" && int.TryParse(p.Caller, out _))) &&
+                             (leftType == "STMT" && int.TryParse(p.Caller, out _)) ||
+                             (leftType == "CALL" && int.TryParse(p.Caller, out _))) &&
                             (rightType == "PROCEDURE"))
                         .ToHashSet(),
                     "Next" => _pkb.IsNext,
@@ -532,7 +572,6 @@ namespace ASP_main
                     }
                     else if (hasLeft)
                     {
-                        // Lewy ma przypisaną wartość, prawy nie — znajdź możliwe pary
                         var compatibleRights = matchingPairs
                             .Where(p => p.Item1 == row[left])
                             .Select(p => p.Item2)
@@ -540,6 +579,9 @@ namespace ASP_main
 
                         foreach (var r in compatibleRights)
                         {
+                            if (!IsValueCompatibleWithType(query, right, r))
+                                continue;
+
                             var newRow = new Dictionary<string, string>(row);
                             newRow[right] = r;
                             newRows.Add(newRow);
@@ -547,7 +589,6 @@ namespace ASP_main
                     }
                     else if (hasRight)
                     {
-                        // Prawy ma przypisaną wartość, lewy nie — znajdź możliwe pary
                         var compatibleLefts = matchingPairs
                             .Where(p => p.Item2 == row[right])
                             .Select(p => p.Item1)
@@ -555,22 +596,45 @@ namespace ASP_main
 
                         foreach (var l in compatibleLefts)
                         {
+                            if (!IsValueCompatibleWithType(query, left, l))
+                                continue;
+
                             var newRow = new Dictionary<string, string>(row);
                             newRow[left] = l;
                             newRows.Add(newRow);
                         }
                     }
+
                     else
                     {
-                        // Żaden nie ma przypisanej wartości — dodaj wszystkie możliwe pary
                         foreach (var (l, r) in matchingPairs)
                         {
+                            bool leftValid = true, rightValid = true;
+
+                            // Jeśli lewy to numer, sprawdź typ instrukcji
+                            if (int.TryParse(l, out var lNum))
+                            {
+                                var node = _pkb.GetNodeByLine(lNum);
+                                leftValid = node != null && IsNodeTypeMatch(leftType, node.Type);
+                            }
+
+                            // Jeśli prawy to numer, sprawdź typ instrukcji
+                            if (int.TryParse(r, out var rNum))
+                            {
+                                var node = _pkb.GetNodeByLine(rNum);
+                                rightValid = node != null && IsNodeTypeMatch(rightType, node.Type);
+                            }
+
+                            if (!leftValid || !rightValid)
+                                continue;
+
                             var newRow = new Dictionary<string, string>(row);
                             newRow[left] = l;
                             newRow[right] = r;
                             newRows.Add(newRow);
                         }
                     }
+
                 }
 
                 if (newRows.Count == 0)
@@ -579,10 +643,11 @@ namespace ASP_main
                 }
 
                 rows = newRows;
+                PrintResults(rows);
             }
 
 
-             PrintResults(rows);
+            // PrintResults(rows);
 
 
             foreach (var pattern in query.PatternClauses)
@@ -688,9 +753,10 @@ namespace ASP_main
                     return isBoolean ? new List<string> { "False" } : new List<string> { "None" };
 
                 rows = newRows;
+                PrintResults(rows);
             }
 
-            PrintResults(rows);
+         //   PrintResults(rows);
 
 
             foreach (var with in query.WithClauses)
@@ -759,12 +825,13 @@ namespace ASP_main
                     return isBoolean ? new List<string> { "False" } : new List<string> { "None" };
 
                 rows = newRows;
+                PrintResults(rows);
             }
 
 
 
 
-           PrintResults(rows);
+         //  PrintResults(rows);
 
             if (isBoolean)
             {
@@ -788,6 +855,7 @@ namespace ASP_main
                     "PROCEDURE" => _pkb.Procedures,
                     "CONSTANT" => _pkb.ConstValues,
                     "PROG_LINE" => _pkb.Stmts,
+                    "CALL" => _pkb.CallStmts,
                     _ => new HashSet<string>()
                 };
 
@@ -834,6 +902,24 @@ namespace ASP_main
 
         }
 
+        private bool IsNodeTypeMatch(string expectedType, string actualType)
+        {
+            expectedType = expectedType.ToUpper();
+            actualType = actualType.ToUpper();
+
+            return expectedType switch
+            {
+                "ASSIGN" => actualType == "ASSIGN",
+                "IF" => actualType == "IF",
+                "WHILE" => actualType == "WHILE",
+                "CALL" => actualType == "CALL",
+                "STMT" => actualType is "ASSIGN" or "IF" or "WHILE" or "CALL" or "PRINT" or "READ",
+                "PROG_LINE" => int.TryParse(actualType, out _), // lub true, bo to numer linii
+                _ => true // inne typy jak VARIABLE, PROCEDURE nie muszą być sprawdzane tutaj
+            };
+        }
+
+
         private HashSet<string> GetDomainForAttribute(PQLQuery query, string synonym, string attribute)
         {
             if (!query.Declarations.TryGetValue(synonym, out var decl))
@@ -841,17 +927,26 @@ namespace ASP_main
 
             return (attribute, decl.Type.ToUpper()) switch
             {
-                ("stmt#", "STMT") or ("stmt#", "ASSIGN") or ("stmt#", "WHILE") or ("stmt#", "IF")
-                    => _pkb.Stmts,
-                ("value", "CONSTANT") or ("varName", "CONSTANT")
-                    => _pkb.ConstValues,
-                ("varName", "VARIABLE")
-                    => _pkb.Variables,
-                ("procName", "PROCEDURE")
-                    => _pkb.Procedures,
+                // stmt# zależnie od typu synonimu
+                ("stmt#", "STMT") => _pkb.Stmts,
+                ("stmt#", "ASSIGN") => _pkb.Assings,
+                ("stmt#", "WHILE") => _pkb.Whiles,
+                ("stmt#", "IF") => _pkb.Ifs,
+                ("stmt#", "CALL") => _pkb.CallStmts,
+
+                // value lub varName dla CONSTANT
+                ("value", "CONSTANT") or ("varName", "CONSTANT") => _pkb.ConstValues,
+
+                // varName dla VARIABLE
+                ("varName", "VARIABLE") => _pkb.Variables,
+
+                // procName dla PROCEDURE
+                ("procName", "PROCEDURE") => _pkb.Procedures,
+
                 _ => new HashSet<string>()
             };
         }
+
 
 
         public static List<List<string>> CartesianProduct(List<List<string>> sets)
@@ -878,16 +973,64 @@ namespace ASP_main
 
         private bool IsValidValueForAttribute(Declaration decl, string attr, string value)
         {
-            return (attr, decl.Type.ToUpper()) switch
+            return decl.Type.ToUpper() switch
             {
-                ("stmt#", "STMT") or ("stmt#", "ASSIGN") or ("stmt#", "WHILE") or ("stmt#", "IF")
-                    => _pkb.Stmts.Contains(value),
-                ("value", "CONSTANT") or ("varName", "CONSTANT")
-                    => _pkb.ConstValues.Contains(value),
-                ("procName", "PROCEDURE")
-                    => _pkb.Procedures.Contains(value),
-                ("varName", "VARIABLE")
-                    => _pkb.Variables.Contains(value),
+                // stmt# dla różnych typów instrukcji
+                "STMT" when attr == "stmt#" => _pkb.Stmts.Contains(value),
+                "ASSIGN" when attr == "stmt#" => _pkb.Assings.Contains(value),
+                "WHILE" when attr == "stmt#" => _pkb.Whiles.Contains(value),
+                "IF" when attr == "stmt#" => _pkb.Ifs.Contains(value),
+                "CALL" when attr == "stmt#" => _pkb.CallStmts.Contains(value),
+
+                // varName – tylko dla VARIABLE
+                "VARIABLE" when attr == "varName" => _pkb.Variables.Contains(value),
+
+                // value – tylko dla CONSTANT
+                "CONSTANT" when attr == "value" || attr == "varName" => _pkb.ConstValues.Contains(value),
+
+                // procName – tylko dla PROCEDURE
+                "PROCEDURE" when attr == "procName" => _pkb.Procedures.Contains(value),
+
+                _ => false
+            };
+
+        }
+
+
+        private bool IsValueCompatibleWithType(PQLQuery query, string synonym, string value)
+        {
+            if (!query.Declarations.TryGetValue(synonym, out var decl))
+                return false;
+
+            var type = decl.Type.ToUpper();
+
+            // dla instrukcji numerycznych
+            if (int.TryParse(value, out var lineNum))
+            {
+                var node = _pkb.GetNodeByLine(lineNum);
+                if (node == null)
+                    return false;
+
+                var nodeType = node.Type.ToUpper();
+
+                return type switch
+                {
+                    "ASSIGN" => nodeType == "ASSIGN",
+                    "WHILE" => nodeType == "WHILE",
+                    "IF" => nodeType == "IF",
+                    "CALL" => nodeType == "CALL",
+                    "STMT" => nodeType is "ASSIGN" or "WHILE" or "IF" or "CALL",
+                    "PROG_LINE" => true, // dowolna instrukcja
+                    _ => false
+                };
+            }
+
+            // dla nazw
+            return type switch
+            {
+                "VARIABLE" => _pkb.Variables.Contains(value),
+                "CONSTANT" => _pkb.ConstValues.Contains(value),
+                "PROCEDURE" => _pkb.Procedures.Contains(value),
                 _ => false
             };
         }
