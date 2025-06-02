@@ -18,6 +18,8 @@ namespace ASP_main
     ("MODIFIES", @"\bModifies\b"),
     ("CALLS", @"\bCalls\b(?!\*)"),
     ("CALLS_STAR", @"\bCalls\*"),
+     ("AFFECTS", @"\bAffects\b(?!\*)"),
+    ("AFFECTS_STAR", @"\bAffects\*"),
     ("USES", @"\bUses\b"),
     ("WHILE", @"\bwhile\b"),
     ("IF", @"\bif\b"),

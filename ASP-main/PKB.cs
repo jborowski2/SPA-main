@@ -534,6 +534,7 @@ namespace ASP_main
 
                         // 2. last in body -> while
                         var lastInBody = whileBody.Children.Last();
+                        if(lastInBody.Type!="if")
                         AddNextRelation(lastInBody.LineNumber.Value.ToString(),
                             whileHeader.LineNumber.Value.ToString());
 
@@ -541,10 +542,10 @@ namespace ASP_main
                         BuildNextFromStmtLst(whileBody, whileHeader);
                     }
 
-                    // 3. while -> instrukcja po pętli
-                    if (next != null)
+                    // while -> instrukcja po pętli
+                   if (next != null)
                     {
-                        AddNextRelation(whileHeader.LineNumber.Value.ToString(), next.LineNumber.Value.ToString());
+                       AddNextRelation(whileHeader.LineNumber.Value.ToString(), next.LineNumber.Value.ToString());
                     }
                 }
                 else if (current.Type == "if")
@@ -553,26 +554,33 @@ namespace ASP_main
                     var thenBlock = ifHeader.Children[0];
                     var elseBlock = ifHeader.Children[1];
 
-                    if (thenBlock.Children.Any())
-                        AddNextRelation(ifHeader.LineNumber.Value.ToString(),
-                            thenBlock.Children.First().LineNumber.Value.ToString());
+                   if (thenBlock.Children.Any())
+                       AddNextRelation(ifHeader.LineNumber.Value.ToString(),
+                           thenBlock.Children.First().LineNumber.Value.ToString());
 
-                    if (elseBlock.Children.Any())
-                        AddNextRelation(ifHeader.LineNumber.Value.ToString(),
-                            elseBlock.Children.First().LineNumber.Value.ToString());
+                   if (elseBlock.Children.Any())
+                       AddNextRelation(ifHeader.LineNumber.Value.ToString(),
+                           elseBlock.Children.First().LineNumber.Value.ToString());
 
                     // Po THEN i ELSE przechodzimy dalej
-                    if (next != null)
+                    if (next != null && next.Type != "if")
                     {
                         var lastThen = thenBlock.Children.LastOrDefault();
                         var lastElse = elseBlock.Children.LastOrDefault();
 
                         if (lastThen != null)
-                            AddNextRelation(lastThen.LineNumber.Value.ToString(), next.LineNumber.Value.ToString());
+                        {
+                            if (next.Type != "if")
+                                AddNextRelation(lastThen.LineNumber.Value.ToString(), next.LineNumber.Value.ToString());
+                        }
 
                         if (lastElse != null)
-                            AddNextRelation(lastElse.LineNumber.Value.ToString(), next.LineNumber.Value.ToString());
+                        {
+                            if (next.Type != "if")
+                                AddNextRelation(lastElse.LineNumber.Value.ToString(), next.LineNumber.Value.ToString());
+                        }
                     }
+
 
                     // Rekurencja
                     BuildNextFromStmtLst(thenBlock, next);
