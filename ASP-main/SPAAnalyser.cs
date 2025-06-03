@@ -243,38 +243,31 @@ namespace ASP_main
                               .ToHashSet(),
 
                     "Uses" => leftType == "PROCEDURE"
-                        ? _pkb.IsUsesProcConst
-                              .Where(p => isWildcard || p.Item2 == right)
-                              .Select(p => p.Item1)
-                              .ToHashSet()
-                            .Union(
-                                _pkb.IsUsesProcVar
+                        ? _pkb.IsUsesProcVar
                                     .Where(p => isWildcard || p.Var == right)
                                     .Select(p => p.Proc)
-                            ).ToHashSet()
-                        : _pkb.IsUsesStmtConst
-                              .Where(p => isWildcard || p.Item2 == right)
-                              .Select(p => p.Item1)
-                              .ToHashSet()
-                            .Union(
-                                _pkb.IsUsesStmtVar
+                            .ToHashSet()
+                        : _pkb.IsUsesStmtVar
                                   .Where(p => isWildcard || p.Var == right)
                                   .Select(p => p.Stmt)
-                            ).ToHashSet(),
+                            .ToHashSet(),
 
                     "Calls" => _pkb.IsCalls
      .Where(p =>
-         (leftType == "PROCEDURE" && !int.TryParse(p.Caller, out _)) ||
-         (leftType != "PROCEDURE" && int.TryParse(p.Caller, out _)))
+         ((leftType == "PROCEDURE" && !int.TryParse(p.Caller, out _)) ||
+          (leftType != "PROCEDURE" && int.TryParse(p.Caller, out _))) &&
+         (isWildcard || p.Callee == right))
      .Select(p => p.Caller)
      .ToHashSet(),
 
                     "Calls*" => _pkb.IsCallsStar
                         .Where(p =>
-                            (leftType == "PROCEDURE" && !int.TryParse(p.Caller, out _)) ||
-                            (leftType != "PROCEDURE" && int.TryParse(p.Caller, out _)))
+                            ((leftType == "PROCEDURE" && !int.TryParse(p.Caller, out _)) ||
+                             (leftType != "PROCEDURE" && int.TryParse(p.Caller, out _))) &&
+                            (isWildcard || p.Callee == right))
                         .Select(p => p.Caller)
                         .ToHashSet(),
+
 
 
                     "Next" => _pkb.IsNext
@@ -388,8 +381,7 @@ namespace ASP_main
                                   ).ToHashSet(),
 
                     "Uses" =>
-                        rightType == "VARIABLE"
-                        ? _pkb.IsUsesStmtVar
+                         _pkb.IsUsesStmtVar
                               .Where(p => isWildcard || p.Stmt == left)
                               .Select(p => p.Var)
                               .ToHashSet()
@@ -397,16 +389,8 @@ namespace ASP_main
                                   _pkb.IsUsesProcVar
                                       .Where(p => isWildcard || p.Proc == left)
                                       .Select(p => p.Var)
-                              ).ToHashSet()
-                        : _pkb.IsUsesStmtConst
-                              .Where(p => isWildcard || p.Item1 == left)
-                              .Select(p => p.Item2)
-                              .ToHashSet()
-                              .Union(
-                                  _pkb.IsUsesProcConst
-                                      .Where(p => isWildcard || p.Item1 == left)
-                                      .Select(p => p.Item2)
                               ).ToHashSet(),
+                    
 
                     "Calls" => _pkb.IsCalls
     .Where(p =>
@@ -539,7 +523,7 @@ namespace ASP_main
                         ("ASSIGN", "VARIABLE") => _pkb.IsUsesStmtVar,
                         ("CALL", "CONSTANT") => _pkb.IsUsesStmtConst,
                         ("CALL", "VARIABLE") => _pkb.IsUsesStmtVar,
-
+                        ("PROG_LINE", "VARIABLE") => _pkb.IsUsesStmtVar,
                         _ => new HashSet<(string, string)>()
                     },
 
@@ -551,6 +535,7 @@ namespace ASP_main
                         ("IF", "VARIABLE") => _pkb.IsModifiesStmtVar,
                         ("ASSIGN", "VARIABLE") => _pkb.IsModifiesStmtVar,
                         ("CALL", "VARIABLE") => _pkb.IsModifiesStmtVar,
+                        ("PROG_LINE", "VARIABLE") => _pkb.IsModifiesStmtVar,
                         _ => new HashSet<(string, string)>()
                     },
                     "Calls" => _pkb.IsCalls
@@ -1173,24 +1158,22 @@ namespace ASP_main
         private bool CheckUsesRelation(string arg1, string arg2)
         {
             if (arg1 == "_" && arg2 == "_")
-                return _pkb.IsUsesStmtVar.Any() || _pkb.IsUsesProcVar.Any() || _pkb.IsUsesStmtConst.Any() || _pkb.IsUsesProcConst.Any();
+                return _pkb.IsUsesStmtVar.Any() || _pkb.IsUsesProcVar.Any();
 
             if (arg1 != "_" && arg2 == "_")
                 return _pkb.IsUsesStmtVar.Any(p => p.Stmt == arg1) ||
-                       _pkb.IsUsesProcVar.Any(p => p.Proc == arg1) ||
-                       _pkb.IsUsesStmtConst.Any(p => p.Item1 == arg1) ||
-                       _pkb.IsUsesProcConst.Any(p => p.Item1 == arg1);
+                       _pkb.IsUsesProcVar.Any(p => p.Proc == arg1);
+
+
 
             if (arg1 == "_" && arg2 != "_")
                 return _pkb.IsUsesStmtVar.Any(p => p.Var == arg2) ||
-                       _pkb.IsUsesProcVar.Any(p => p.Var == arg2) ||
-                       _pkb.IsUsesStmtConst.Any(p => p.Item2 == arg2) ||
-                       _pkb.IsUsesProcConst.Any(p => p.Item2 == arg2);
+                       _pkb.IsUsesProcVar.Any(p => p.Var == arg2);
+
 
             return _pkb.IsUsesStmtVar.Contains((arg1, arg2)) ||
-                   _pkb.IsUsesProcVar.Contains((arg1, arg2)) ||
-                   _pkb.IsUsesStmtConst.Contains((arg1, arg2)) ||
-                   _pkb.IsUsesProcConst.Contains((arg1, arg2));
+                   _pkb.IsUsesProcVar.Contains((arg1, arg2));
+                 
         }
 
 

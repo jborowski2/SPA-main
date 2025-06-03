@@ -269,8 +269,13 @@ namespace ASP_main
             {
                 var name = CurrentToken.Value;
                 Eat("NAME");
+                if (CurrentToken!=null)
+                    if (CurrentToken.Type == "DOT")
+                {
+                    Eat("DOT");
+                    Eat(CurrentToken.Type); 
+                }
 
-              
                 return new Selected(name);
             }
             else if (CurrentToken.Value == "BOOLEAN")
@@ -282,6 +287,10 @@ namespace ASP_main
 
             throw new Exception($"Unexpected token in selected: {CurrentToken}");
         }
+
+
+
+
         public Relation ParseRelation()
         {
             var relationType = CurrentToken.Value;

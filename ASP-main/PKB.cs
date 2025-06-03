@@ -925,6 +925,9 @@ namespace ASP_main
                 case "const":
                     ConstValues.Add(node.Value);
                     break;
+                case "while":
+                    Variables.Add(node.Value);
+                    break;
                 case "call":
                   //  CallStmts.Add(node.Value);
                     break;
