@@ -335,14 +335,24 @@ namespace ASP_main
                     foreach (var varName in GetAllUsedVariables(node))
                         AddUses(stmt, varName);
                 }
-                // call nadal nieobsługiwany
+                else if (node.Type == "call")
+                {
+                    string calledProc = node.Value;
+                    foreach (var (proc, varName) in IsUsesProcVar)
+                        if (proc == calledProc)
+                            AddUses(stmt, varName);
+                    foreach (var (proc, constVal) in IsUsesProcConst)
+                        if (proc == calledProc)
+                            IsUsesStmtConst.Add((stmt, constVal));
+                    foreach (var (proc, varName) in IsModifiesProcVar)
+                        if (proc == calledProc)
+                            AddModifies(stmt, varName);
+                }
             }
 
-            // --- propagowanie z instrukcji do procedury ---
             if (node.Type == "procedure")
             {
                 string procName = node.Value;
-
                 var stmtsInProc = new HashSet<string>();
                 CollectStatementsInProcedure(node, stmtsInProc);
 
@@ -360,42 +370,36 @@ namespace ASP_main
                             IsUsesProcVar.Add((procName, varName));
                     }
 
-                    foreach (var (s, constName) in IsUsesStmtConst)
+                    foreach (var (s, constName) in IsUsesStmtConst.Where(p => p.Stmt == stmt))
                     {
-                        if (s == stmt)
-                            IsUsesProcConst.Add((procName, constName));
+                        IsUsesProcConst.Add((procName, constName));
                     }
                 }
             }
         }
 
-
         private HashSet<string> GetAllUsedVariables(ASTNode node)
         {
-            HashSet<string> usedVars = new HashSet<string>();
+            var usedVars = new HashSet<string>();
 
             if (node == null)
                 return usedVars;
 
-            if (node.LineNumber.HasValue)
+            if (node.LineNumber.HasValue && UsesStmt.TryGetValue(node.LineNumber.Value.ToString(), out var vars))
             {
-                string stmt = node.LineNumber.Value.ToString();
-                if (UsesStmt.ContainsKey(stmt))
-                {
-                    foreach (var varName in UsesStmt[stmt])
-                        usedVars.Add(varName);
-                }
+                foreach (var varName in vars)
+                    usedVars.Add(varName);
             }
 
             foreach (var child in node.Children)
             {
-                var childVars = GetAllUsedVariables(child);
-                foreach (var varName in childVars)
+                foreach (var varName in GetAllUsedVariables(child))
                     usedVars.Add(varName);
             }
 
             return usedVars;
         }
+
         private void PropagateModifiesAndUsesOverCalls()
         {
             bool changed;
@@ -408,7 +412,6 @@ namespace ASP_main
                 {
                     foreach (var callee in callees)
                     {
-                        // MODIFIES propagation
                         foreach (var (p, v) in IsModifiesProcVar.ToList())
                         {
                             if (p == callee && !IsModifiesProcVar.Contains((caller, v)) && !int.TryParse(caller, out _))
@@ -418,7 +421,6 @@ namespace ASP_main
                             }
                         }
 
-                        // USES propagation (variables)
                         foreach (var (p, v) in IsUsesProcVar.ToList())
                         {
                             if (p == callee && !IsUsesProcVar.Contains((caller, v)) && !int.TryParse(caller, out _))
@@ -428,7 +430,6 @@ namespace ASP_main
                             }
                         }
 
-                        // USES propagation (constants)
                         foreach (var (p, c) in IsUsesProcConst.ToList())
                         {
                             if (p == callee && !IsUsesProcConst.Contains((caller, c)) && !int.TryParse(caller, out _))
@@ -437,37 +438,37 @@ namespace ASP_main
                                 changed = true;
                             }
                         }
-
                     }
                 }
 
             } while (changed);
-        
-            // Dodaj propagację na statementy call (zawsze PO poprzedniej fazie!)
+
             foreach (var node in LineToNode.Values)
             {
                 if (node.Type == "call")
                 {
                     string stmt = node.LineNumber.Value.ToString();
                     string procName = node.Value;
+
                     foreach (var (p, v) in IsModifiesProcVar)
                         if (p == procName)
                             AddModifies(stmt, v);
+
                     foreach (var (p, v) in IsUsesProcVar)
                         if (p == procName)
                             AddUses(stmt, v);
+
+                    foreach (var (p, c) in IsUsesProcConst)
+                        if (p == procName)
+                            IsUsesStmtConst.Add((stmt, c));
                 }
             }
 
-            // Teraz musisz jeszcze raz zebrać Modifies/Uses dla PROCEDUR,
-            // bo nowe statementy call mogły mieć nowe modyfikacje/uses:
             foreach (var procName in Procedures)
             {
-                // Znajdź węzeł procedury o tej nazwie
                 var procNode = LineToNode.Values.FirstOrDefault(n => n.Type == "procedure" && n.Value == procName);
                 if (procNode == null) continue;
 
-                // Zbierz wszystkie statementy w tej procedurze
                 var stmtsInProc = new HashSet<string>();
                 CollectStatementsInProcedure(procNode, stmtsInProc);
 
@@ -491,7 +492,6 @@ namespace ASP_main
                     }
                 }
             }
-
         }
 
         private void PopulateNext(ASTNode node)

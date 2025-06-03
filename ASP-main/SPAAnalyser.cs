@@ -127,7 +127,7 @@ namespace ASP_main
                             return ReturnEmpty(query);
                         break;
                     default:
-                        throw new NotImplementedException($"Relacja {relation.Type} nieobsługiwana.");
+                        return new List<string> { "Nieobsługiwana relacja" };
                 }
 
             }
@@ -263,14 +263,19 @@ namespace ASP_main
                             ).ToHashSet(),
 
                     "Calls" => _pkb.IsCalls
-                                  .Where(p => isWildcard || p.Callee == right)
-                                  .Select(p => p.Caller)
-                                  .ToHashSet(),
+     .Where(p =>
+         (leftType == "PROCEDURE" && !int.TryParse(p.Caller, out _)) ||
+         (leftType != "PROCEDURE" && int.TryParse(p.Caller, out _)))
+     .Select(p => p.Caller)
+     .ToHashSet(),
 
                     "Calls*" => _pkb.IsCallsStar
-                                  .Where(p => isWildcard || p.Callee == right)
-                                  .Select(p => p.Caller)
-                                  .ToHashSet(),
+                        .Where(p =>
+                            (leftType == "PROCEDURE" && !int.TryParse(p.Caller, out _)) ||
+                            (leftType != "PROCEDURE" && int.TryParse(p.Caller, out _)))
+                        .Select(p => p.Caller)
+                        .ToHashSet(),
+
 
                     "Next" => _pkb.IsNext
                                  .Where(p => isWildcard || p.Item2 == right)
@@ -404,14 +409,21 @@ namespace ASP_main
                               ).ToHashSet(),
 
                     "Calls" => _pkb.IsCalls
-                                  .Where(p => isWildcard || p.Caller == left)
-                                  .Select(p => p.Callee)
-                                  .ToHashSet(),
+    .Where(p =>
+        (rightType == "PROCEDURE" && !int.TryParse(p.Callee, out _)) ||
+        (rightType != "PROCEDURE" && int.TryParse(p.Callee, out _)))
+    .Where(p => isWildcard || p.Caller == left)
+    .Select(p => p.Callee)
+    .ToHashSet(),
 
                     "Calls*" => _pkb.IsCallsStar
-                                  .Where(p => isWildcard || p.Caller == left)
-                                  .Select(p => p.Callee)
-                                  .ToHashSet(),
+                        .Where(p =>
+                            (rightType == "PROCEDURE" && !int.TryParse(p.Callee, out _)) ||
+                            (rightType != "PROCEDURE" && int.TryParse(p.Callee, out _)))
+                        .Where(p => isWildcard || p.Caller == left)
+                        .Select(p => p.Callee)
+                        .ToHashSet(),
+
 
                     "Next" => _pkb.IsNext
                                  .Where(p => isWildcard || p.Item1 == left)
@@ -436,31 +448,26 @@ namespace ASP_main
                 {
                     foreach (var val in matchingRights)
                     {
-                        // Jeśli synonim dotyczy typu instrukcji, sprawdź jego zgodność z typem z PKB
-                        if (int.TryParse(val, out var lineNum))
-                        {
-                            var node = _pkb.GetNodeByLine(lineNum);
-                            if (node == null)
-                                continue;
+                        // Sprawdzenie typów instrukcji bez GetNodeByLine
+                        if (rightType == "ASSIGN" && !_pkb.Assings.Contains(val))
+                            continue;
+                        if (rightType == "WHILE" && !_pkb.Whiles.Contains(val))
+                            continue;
+                        if (rightType == "IF" && !_pkb.Ifs.Contains(val))
+                            continue;
+                        if (rightType == "CALL" && !_pkb.CallStmts.Contains(val))
+                            continue;
 
-                            var nodeType = node.Type.ToUpper();
+                        if (rightType == "STMT" &&
+                            !_pkb.Assings.Contains(val) &&
+                            !_pkb.Whiles.Contains(val) &&
+                            !_pkb.Ifs.Contains(val) &&
+                            !_pkb.CallStmts.Contains(val))
+                            continue;
 
-                            if (rightType == "ASSIGN" && nodeType != "ASSIGN")
-                                continue;
-                            if (rightType == "WHILE" && nodeType != "WHILE")
-                                continue;
-                            if (rightType == "IF" && nodeType != "IF")
-                                continue;
-                            if (rightType == "CALL" && nodeType != "CALL")
-                                continue;
-                            if (rightType == "STMT" &&
-                                nodeType != "ASSIGN" &&
-                                nodeType != "WHILE" &&
-                                nodeType != "IF" &&
-                                nodeType != "CALL")
-                                continue;
-                            // dla PROG_LINE nie trzeba sprawdzać typu
-                        }
+                        // Sprawdzenie typu CONSTANT
+                        if (rightType == "CONSTANT" && !_pkb.ConstValues.Contains(val))
+                            continue;
 
                         // Jeśli wiersz już ma przypisaną wartość dla synonimu — sprawdź zgodność
                         if (row.ContainsKey(right))
@@ -478,6 +485,8 @@ namespace ASP_main
                         }
                     }
                 }
+
+
 
 
 
@@ -626,21 +635,8 @@ namespace ASP_main
                     {
                         foreach (var (l, r) in matchingPairs)
                         {
-                            bool leftValid = true, rightValid = true;
-
-                            // Jeśli lewy to numer, sprawdź typ instrukcji
-                            if (int.TryParse(l, out var lNum))
-                            {
-                                var node = _pkb.GetNodeByLine(lNum);
-                                leftValid = node != null && IsNodeTypeMatch(leftType, node.Type);
-                            }
-                            
-                            // Jeśli prawy to numer, sprawdź typ instrukcji
-                            if (int.TryParse(r, out var rNum))
-                            {
-                                var node = _pkb.GetNodeByLine(rNum);
-                                rightValid = node != null && IsNodeTypeMatch(rightType, node.Type);
-                            }
+                            bool leftValid = IsValueCompatibleWithType(query, left, l);
+                            bool rightValid = IsValueCompatibleWithType(query, right, r);
 
                             if (!leftValid || !rightValid)
                                 continue;
@@ -650,7 +646,9 @@ namespace ASP_main
                             newRow[right] = r;
                             newRows.Add(newRow);
                         }
+
                     }
+
 
                 }
 
@@ -1024,35 +1022,47 @@ namespace ASP_main
 
             var type = decl.Type.ToUpper();
 
-            // dla instrukcji numerycznych
-            if (int.TryParse(value, out var lineNum))
+            switch (type)
             {
-                var node = _pkb.GetNodeByLine(lineNum);
-                if (node == null)
+                case "ASSIGN":
+                case "WHILE":
+                case "IF":
+                case "CALL":
+                case "STMT":
+                case "PROG_LINE":
+                    if (!int.TryParse(value, out var lineNum))
+                        return false;
+
+                    var node = _pkb.GetNodeByLine(lineNum);
+                    if (node == null)
+                        return false;
+
+                    var nodeType = node.Type.ToUpper();
+
+                    return type switch
+                    {
+                        "ASSIGN" => nodeType == "ASSIGN",
+                        "WHILE" => nodeType == "WHILE",
+                        "IF" => nodeType == "IF",
+                        "CALL" => nodeType == "CALL",
+                        "STMT" => nodeType is "ASSIGN" or "WHILE" or "IF" or "CALL",
+                        "PROG_LINE" => true,
+                        _ => false
+                    };
+
+                case "VARIABLE":
+                    return _pkb.Variables.Contains(value);
+
+                case "CONSTANT":
+                    // CONSTANT może być liczbą (np. "5"), ale nie musi odnosić się do linii kodu
+                    return _pkb.ConstValues.Contains(value);
+
+                case "PROCEDURE":
+                    return _pkb.Procedures.Contains(value);
+
+                default:
                     return false;
-
-                var nodeType = node.Type.ToUpper();
-
-                return type switch
-                {
-                    "ASSIGN" => nodeType == "ASSIGN",
-                    "WHILE" => nodeType == "WHILE",
-                    "IF" => nodeType == "IF",
-                    "CALL" => nodeType == "CALL",
-                    "STMT" => nodeType is "ASSIGN" or "WHILE" or "IF" or "CALL",
-                    "PROG_LINE" => true, // dowolna instrukcja
-                    _ => false
-                };
             }
-
-            // dla nazw
-            return type switch
-            {
-                "VARIABLE" => _pkb.Variables.Contains(value),
-                "CONSTANT" => _pkb.ConstValues.Contains(value),
-                "PROCEDURE" => _pkb.Procedures.Contains(value),
-                _ => false
-            };
         }
 
 
