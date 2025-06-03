@@ -762,7 +762,9 @@ namespace ASP_main
             foreach (var with in query.WithClauses)
             {
                 // Interesują nas tylko porównania dwóch atrybutów
-                if (!(with.Left.IsAttributeRef && with.Right.IsAttributeRef))
+                if (with.Right.Reference is null)
+                    continue;
+                if (!(with.Left.IsAttributeRef && with.Right.IsAttributeRef) && !IsSynonym(with.Right.Reference,query))
                     continue;
 
                 var leftSyn = with.Left.Reference;

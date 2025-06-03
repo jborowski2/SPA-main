@@ -554,38 +554,32 @@ namespace ASP_main
                     var thenBlock = ifHeader.Children[0];
                     var elseBlock = ifHeader.Children[1];
 
-                   if (thenBlock.Children.Any())
-                       AddNextRelation(ifHeader.LineNumber.Value.ToString(),
-                           thenBlock.Children.First().LineNumber.Value.ToString());
+                    if (thenBlock.Children.Any())
+                        AddNextRelation(ifHeader.LineNumber.Value.ToString(),
+                            thenBlock.Children.First().LineNumber.Value.ToString());
 
-                   if (elseBlock.Children.Any())
-                       AddNextRelation(ifHeader.LineNumber.Value.ToString(),
-                           elseBlock.Children.First().LineNumber.Value.ToString());
+                    if (elseBlock.Children.Any())
+                        AddNextRelation(ifHeader.LineNumber.Value.ToString(),
+                            elseBlock.Children.First().LineNumber.Value.ToString());
 
-                    // Po THEN i ELSE przechodzimy dalej
-                    if (next != null && next.Type != "if")
+                    // Dodaj relacje z końca THEN/ELSE do next — tylko jeśli next istnieje i nie jest to nagłówek pętli
+                    if (next != null && next.Type != "while" && next.Type != "if")
                     {
                         var lastThen = thenBlock.Children.LastOrDefault();
                         var lastElse = elseBlock.Children.LastOrDefault();
 
                         if (lastThen != null)
-                        {
-                            if (next.Type != "if")
-                                AddNextRelation(lastThen.LineNumber.Value.ToString(), next.LineNumber.Value.ToString());
-                        }
+                            AddNextRelation(lastThen.LineNumber.Value.ToString(), next.LineNumber.Value.ToString());
 
                         if (lastElse != null)
-                        {
-                            if (next.Type != "if")
-                                AddNextRelation(lastElse.LineNumber.Value.ToString(), next.LineNumber.Value.ToString());
-                        }
+                            AddNextRelation(lastElse.LineNumber.Value.ToString(), next.LineNumber.Value.ToString());
                     }
-
 
                     // Rekurencja
                     BuildNextFromStmtLst(thenBlock, next);
                     BuildNextFromStmtLst(elseBlock, next);
                 }
+
             }
         }
 
@@ -925,7 +919,7 @@ namespace ASP_main
                 case "const":
                     ConstValues.Add(node.Value);
                     break;
-                case "while":
+                case "if":
                     Variables.Add(node.Value);
                     break;
                 case "call":
@@ -937,6 +931,13 @@ namespace ASP_main
             {
                 IndexTree(child);
             }
+
+            // Dodaj to na koniec metody:
+            if (node.Type == "var" && !string.IsNullOrWhiteSpace(node.Value))
+            {
+                Variables.Add(node.Value);
+            }
+
 
         }
 
