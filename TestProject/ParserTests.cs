@@ -187,13 +187,10 @@ namespace TestProject
             Assert.Equal("plus_op", result.Type);
             Assert.Equal("PLUS", result.Value);
             Assert.Equal(2, result.Children.Count);
-
             Assert.Equal("var", result.Children[0].Type);
             Assert.Equal("x", result.Children[0].Value);
-
             Assert.Equal("multiply_op", result.Children[1].Type);
             Assert.Equal("*", result.Children[1].Value);
-
             Assert.Equal(2, result.Children[1].Children.Count);
             Assert.Equal("const", result.Children[1].Children[0].Type);
             Assert.Equal("2", result.Children[1].Children[0].Value);
@@ -241,11 +238,11 @@ namespace TestProject
         {
             // Arrange
             var tokens = CreateTokens(
-                ("LBRACE", "(", 1),
+                ("LPAREN", "(", 1),
                 ("NUMBER", "5", 1),
                 ("PLUS", "+", 1),
                 ("NAME", "x", 1),
-                ("RBRACE", ")", 1),
+                ("RPAREN", ")", 1),
                 ("SEMICOLON", ";", 1)
             );
             var parser = new Parser(tokens);

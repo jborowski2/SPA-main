@@ -14,295 +14,456 @@ namespace TestProject
     {
         private ASTNode CreateSimpleAST()
         {
-            var program = new ASTNode("program");
-            var procedure = new ASTNode("procedure", "main");
-            program.AddChild(procedure);
+            // procedure init { x = 0; }
+            var procInit = new ASTNode("procedure", "init");
+            procInit.ProcName = "init";
+            var stmtLstInit = new ASTNode("stmtLst") { ProcName = "init" };
+            var assignInit = new ASTNode("assign", "x", 10);
+            assignInit.AddChild(new ASTNode("const", "0"));
+            stmtLstInit.AddChild(assignInit);
+            procInit.AddChild(stmtLstInit);
 
-            var stmtList = new ASTNode("stmtList");
-            procedure.AddChild(stmtList);
+            // procedure helper { z = 5; }
+            var procHelper = new ASTNode("procedure", "helper");
+            procHelper.ProcName = "helper";
+            var stmtLstHelper = new ASTNode("stmtLst") { ProcName = "helper" };
+            var assignHelper = new ASTNode("assign", "z", 20);
+            assignHelper.AddChild(new ASTNode("const", "5"));
+            stmtLstHelper.AddChild(assignHelper);
+            procHelper.AddChild(stmtLstHelper);
 
-            // Stmt 1: assign x = 5
-            var assign1 = new ASTNode("assign", "x", 1);
-            stmtList.AddChild(assign1);
-            var const1 = new ASTNode("const", "5");
-            assign1.AddChild(const1);
+            // procedure main { call init; x = 1; if ... while ... }
+            var procMain = new ASTNode("procedure", "main");
+            procMain.ProcName = "main";
+            var stmtLstMain = new ASTNode("stmtLst") { ProcName = "main" };
 
-            // Stmt 2: while y
-            var whileNode = new ASTNode("while", "y", 2);
-            stmtList.AddChild(whileNode);
+            var callInit = new ASTNode("call", "init", 1);
+            var assign1 = new ASTNode("assign", "x", 2);
+            assign1.AddChild(new ASTNode("const", "1"));
+            var ifNode = new ASTNode("if", "y", 3);
 
-            var whileBody = new ASTNode("stmtList");
-            whileNode.AddChild(whileBody);
+            // THEN: y = 2;
+            var thenLst = new ASTNode("stmtLst") { ProcName = "main" };
+            var assignThen = new ASTNode("assign", "y", 4);
+            assignThen.AddChild(new ASTNode("const", "2"));
+            thenLst.AddChild(assignThen);
 
-            // Stmt 3: assign z = 1 (inside while)
-            var assign2 = new ASTNode("assign", "z", 3);
-            whileBody.AddChild(assign2);
-            var const2 = new ASTNode("const", "1");
-            assign2.AddChild(const2);
+            // ELSE: call helper;
+            var elseLst = new ASTNode("stmtLst") { ProcName = "main" };
+            var callHelper = new ASTNode("call", "helper", 5);
+            elseLst.AddChild(callHelper);
 
-            // Stmt 4: assign y = 0 (inside while)
-            var assign3 = new ASTNode("assign", "y", 4);
-            whileBody.AddChild(assign3);
-            var const3 = new ASTNode("const", "0");
-            assign3.AddChild(const3);
+            ifNode.AddChild(thenLst);
+            ifNode.AddChild(elseLst);
 
-            // Stmt 5: assign x = 10 (after while)
-            var assign4 = new ASTNode("assign", "x", 5);
-            stmtList.AddChild(assign4);
-            var const4 = new ASTNode("const", "10");
-            assign4.AddChild(const4);
+            var whileNode = new ASTNode("while", "z", 6);
+            var whileLst = new ASTNode("stmtLst") { ProcName = "main" };
+            var assignWhile = new ASTNode("assign", "x", 7);
+            assignWhile.AddChild(new ASTNode("const", "3"));
+            whileLst.AddChild(assignWhile);
+            whileNode.AddChild(whileLst);
 
-            // Set follows relationships
-            assign1.SetFollows(whileNode);
-            assign2.SetFollows(assign3);
-            whileNode.SetFollows(assign4);
+            // relacje follows
+            callInit.SetFollows(assign1);
+            assign1.SetFollows(ifNode);
+            ifNode.SetFollows(whileNode);
 
-            return program;
+            stmtLstMain.AddChild(callInit);
+            stmtLstMain.AddChild(assign1);
+            stmtLstMain.AddChild(ifNode);
+            stmtLstMain.AddChild(whileNode);
+            procMain.AddChild(stmtLstMain);
+
+            // ROOT = program
+            var root = new ASTNode("program");
+            root.AddChild(procMain);
+            root.AddChild(procHelper);
+            root.AddChild(procInit);
+            return root;
+        }
+
+        private void PrepareBasicPKB()
+        {
+            var pkb = PKB.GetInstance();
+            pkb.SetRoot(CreateSimpleAST());
+        }
+
+        private List<Token> LexPQL(string query)
+        {
+            var lexer = new PQLLexer(query);
+            return lexer.GetTokens();
+        }
+
+        [Fact]
+        public void ExecuteQuery_SimpleSelect_ReturnsAllStatements()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "stmt s; Select s";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            Assert.Contains("1", result);
+            Assert.Contains("2", result);
+            Assert.Contains("3", result);
+            Assert.Contains("4", result);
+            Assert.Contains("5", result);
+            Assert.Contains("6", result);
+            Assert.Contains("7", result);
+            Assert.Contains("10", result);
+            Assert.Contains("20", result);
+        }
+
+        [Fact]
+        public void ExecuteQuery_FollowsRelation_Works()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "stmt s; Select s such that Follows(1, s)";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            Assert.Single(result);
+            Assert.Contains("2", result);
+        }
+
+        [Fact]
+        public void ExecuteQuery_ParentAndParentStarRelations_Work()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "stmt s; Select s such that Parent*(3, s)";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            Assert.Contains("4", result);
+            Assert.Contains("5", result);
+        }
+
+        [Fact]
+        public void ExecuteQuery_PatternAssignWithVarAndConstant_Works()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "assign a; Select a pattern a(\"x\", _)";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            Assert.Contains("2", result);
+            Assert.Contains("7", result);
+            Assert.Contains("10", result);
+        }
+
+        [Fact]
+        public void ExecuteQuery_WithWithClause_IntEquality_Works()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "stmt s; Select s with s.stmt# = 2";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            Assert.Single(result);
+            Assert.Contains("2", result);
+        }
+
+        [Fact]
+        public void ExecuteQuery_SuchThatAndPatternAndWith_AllTogether()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "assign a; Select a such that Follows(1, a) pattern a(\"x\", _) with a.stmt# = 2";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            Assert.Single(result);
+            Assert.Contains("2", result);
+        }
+
+        [Fact]
+        public void ExecuteQuery_CallsStarRelation_Works()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "procedure p; Select p such that Calls*(\"main\", p)";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            Assert.Contains("init", result);
+            Assert.Contains("helper", result);
+        }
+
+        [Fact]
+        public void ExecuteQuery_PatternWithUnderscoreString_Works()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "assign a; Select a pattern a(_, _\"3\"_)";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            Assert.Contains("7", result);
+        }
+
+        [Fact]
+        public void ExecuteQuery_UsesRelation_Works()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "stmt s; variable v; Select s such that Uses(s, \"y\")";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            Assert.Contains("3", result);
+        }
+
+        [Fact]
+        public void ExecuteQuery_ModifiesRelation_Works()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "assign a; variable v; Select v such that Modifies(a, v)";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            Assert.Contains("x", result);
+            Assert.Contains("y", result);
+            Assert.Contains("z", result);
+        }
+
+        [Fact]
+        public void ExecuteQuery_NextAndNextStarRelation_Works()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "stmt s; Select s such that Next(1, s)";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            Assert.Contains("2", result);
+        }
+
+        [Fact]
+        public void ExecuteQuery_NextStarRelation_Works()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "stmt s; Select s such that Next*(1, s)";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            Assert.Contains("2", result);
+            Assert.Contains("3", result);
+            Assert.Contains("4", result);
+            Assert.Contains("5", result);
+            Assert.Contains("6", result);
+            Assert.Contains("7", result);
+        }
+
+        [Fact]
+        public void ExecuteQuery_PatternWithDifferentVariable_Works()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "assign a; Select a pattern a(\"y\", _)";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            Assert.Single(result);
+            Assert.Contains("4", result);
+        }
+
+        [Fact]
+        public void ExecuteQuery_WithClause_StringEquality_Works()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "procedure p; Select p with p.procName = \"main\"";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            Assert.Single(result);
+            Assert.Contains("main", result);
+        }
+
+        [Fact]
+        public void ExecuteQuery_PatternWithWildcardVar_Works()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "assign a; Select a pattern a(_, _)";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            // Wszystkie assigny
+            Assert.Contains("2", result);
+            Assert.Contains("4", result);
+            Assert.Contains("7", result);
+            Assert.Contains("10", result);
+            Assert.Contains("20", result);
+        }
+
+        [Fact]
+        public void ExecuteQuery_SelectVarName_WithWithClause()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "variable v; Select v with v.varName = \"x\"";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            Assert.Single(result);
+            Assert.Contains("x", result);
+        }
+
+        [Fact]
+        public void ExecuteQuery_NoResultIfNoSuchPattern()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "assign a; Select a pattern a(\"nonexistent\", _)";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            Assert.Contains("none", result);
+        }
+
+        [Fact]
+        public void ExecuteQuery_WithClause_AttributeComparison()
+        {
+            // Arrange
+            PrepareBasicPKB();
+            string query = "stmt s1, s2; Select s1 such that Follows(s1, s2) with s1.stmt# = s2.stmt#";
+            var tokens = LexPQL(query);
+            var parser = new PQLParser(tokens);
+            var queryObj = parser.ParseQuery();
+            var pkb = PKB.GetInstance();
+            var analyser = new SPAAnalyzer(pkb);
+
+            // Act
+            var result = analyser.Analyze(queryObj);
+
+            // Assert
+            Assert.Contains("none", result);
         }
     }
 }
-        //[Fact]
-        //    public void Analyze_ModifiesX_ReturnsCorrectStatements()
-        //    {
-        //        var ast = CreateSimpleAST();
-        //        var analyzer = new SPAAnalyzer(ast);
-
-        //        var query = new PQLQuery();
-        //        query.Declarations.Add(new Declaration("assign", "a"));
-        //        query.Selected = new Selected("a");
-        //        query.Relations.Add(new Relation("Modifies", "a", "x"));
-
-        //        var results = analyzer.Analyze(query);
-
-        //        Assert.Equal(2, results.Count);
-        //        Assert.Contains("1", results); // x = 5
-        //        Assert.Contains("5", results); // x = 10
-        //    }
-
-        //    [Fact]
-        //    public void Analyze_UsesY_ReturnsWhileStatement()
-        //    {
-        //        var ast = CreateSimpleAST();
-        //        var analyzer = new SPAAnalyzer(ast);
-
-        //        var query = new PQLQuery();
-        //        query.Declarations.Add(new Declaration("stmt", "s"));
-        //        query.Selected = new Selected("s");
-        //        query.Relations.Add(new Relation("Uses", "s", "y"));
-
-        //        var results = analyzer.Analyze(query);
-
-        //        Assert.Single(results);
-        //        Assert.Equal("2", results[0]); // while(y)
-        //    }
-
-        //    [Fact]
-        //    public void Analyze_ParentOfWhileBody_ReturnsInnerStatements()
-        //    {
-        //        var ast = CreateSimpleAST();
-        //        var analyzer = new SPAAnalyzer(ast);
-
-        //        var query = new PQLQuery();
-        //        query.Declarations.Add(new Declaration("stmt", "s"));
-        //        query.Selected = new Selected("s");
-        //        query.Relations.Add(new Relation("Parent", "2", "s"));
-
-        //        var results = analyzer.Analyze(query);
-
-        //        Assert.Equal(2, results.Count);
-        //        Assert.Contains("3", results); // z = 1
-        //        Assert.Contains("4", results); // y = 0
-        //    }
-
-        //    [Fact]
-        //    public void Analyze_FollowsRelations_ReturnsCorrectNextStatements()
-        //    {
-        //        var ast = CreateSimpleAST();
-        //        var analyzer = new SPAAnalyzer(ast);
-
-        //        var query = new PQLQuery();
-        //        query.Declarations.Add(new Declaration("stmt", "s"));
-        //        query.Selected = new Selected("s");
-        //        query.Relations.Add(new Relation("Follows", "1", "s"));
-
-        //        var results = analyzer.Analyze(query);
-
-        //        Assert.Single(results);
-        //        Assert.Equal("2", results[0]); // while po assign
-        //    }
-
-        //    [Fact]
-        //    public void Analyze_FollowsInWhileBody_ReturnsCorrectOrder()
-        //    {
-        //        var ast = CreateSimpleAST();
-        //        var analyzer = new SPAAnalyzer(ast);
-
-        //        var query = new PQLQuery();
-        //        query.Declarations.Add(new Declaration("stmt", "s"));
-        //        query.Selected = new Selected("s");
-        //        query.Relations.Add(new Relation("Follows", "3", "s"));
-
-        //        var results = analyzer.Analyze(query);
-
-        //        Assert.Single(results);
-        //        Assert.Equal("4", results[0]); // y = 0 po z = 1
-        //    }
-
-        //    [Fact]
-        //    public void Analyze_ModifiesWithParent_ReturnsNestedAssignments()
-        //    {
-        //        var ast = CreateSimpleAST();
-        //        var analyzer = new SPAAnalyzer(ast);
-
-        //        var query = new PQLQuery();
-        //        query.Declarations.Add(new Declaration("assign", "a"));
-        //        query.Declarations.Add(new Declaration("while", "w"));
-        //        query.Selected = new Selected("a");
-        //        query.Relations.Add(new Relation("Parent", "w", "a"));
-        //        query.Relations.Add(new Relation("Modifies", "a", "y"));
-
-        //        var results = analyzer.Analyze(query);
-
-        //        Assert.Single(results);
-        //        Assert.Equal("4", results[0]); // y = 0
-        //    }
-
-        //    [Fact]
-        //    public void Analyze_NonexistentVariable_ReturnsEmpty()
-        //    {
-        //        var ast = CreateSimpleAST();
-        //        var analyzer = new SPAAnalyzer(ast);
-
-        //        var query = new PQLQuery();
-        //        query.Declarations.Add(new Declaration("stmt", "s"));
-        //        query.Selected = new Selected("s");
-        //        query.Relations.Add(new Relation("Modifies", "s", "nonexistent"));
-
-        //        var results = analyzer.Analyze(query);
-
-        //        Assert.Single(results);
-        //        Assert.Equal("None", results[0]);
-        //    }
-
-        //    [Fact]
-        //    public void Analyze_BooleanQueryForExistingModifies_ReturnsTrue()
-        //    {
-        //        var ast = CreateSimpleAST();
-        //        var analyzer = new SPAAnalyzer(ast);
-
-        //        var query = new PQLQuery();
-        //        query.Declarations.Add(new Declaration("stmt", "s"));
-        //        query.Selected = new Selected("BOOLEAN");
-        //        query.Relations.Add(new Relation("Modifies", "1", "x"));
-
-        //        var results = analyzer.Analyze(query);
-
-        //        Assert.Single(results);
-        //        Assert.Equal("True", results[0]);
-        //    }
-
-        //    [Fact]
-        //    public void Analyze_BooleanQueryForInvalidModifies_ReturnsFalse()
-        //    {
-        //        var ast = CreateSimpleAST();
-        //        var analyzer = new SPAAnalyzer(ast);
-
-        //        var query = new PQLQuery();
-        //        query.Declarations.Add(new Declaration("stmt", "s"));
-        //        query.Selected = new Selected("BOOLEAN");
-        //        query.Relations.Add(new Relation("Modifies", "2", "x"));
-
-        //        var results = analyzer.Analyze(query);
-
-        //        Assert.Single(results);
-        //        Assert.Equal("False", results[0]);
-        //    }
-
-        //    [Fact]
-        //    public void Analyze_BooleanQueryForExistingFollows_ReturnsTrue()
-        //    {
-        //        var ast = CreateSimpleAST();
-        //        var analyzer = new SPAAnalyzer(ast);
-
-        //        var query = new PQLQuery();
-        //        query.Declarations.Add(new Declaration("stmt", "s"));
-        //        query.Selected = new Selected("BOOLEAN");
-        //        query.Relations.Add(new Relation("Follows", "1", "2"));
-
-        //        var results = analyzer.Analyze(query);
-
-        //        Assert.Single(results);
-        //        Assert.Equal("True", results[0]);
-        //    }
-
-        //    [Fact]
-        //    public void Analyze_BooleanQueryForInvalidFollows_ReturnsFalse()
-        //    {
-        //        var ast = CreateSimpleAST();
-        //        var analyzer = new SPAAnalyzer(ast);
-
-        //        var query = new PQLQuery();
-        //        query.Declarations.Add(new Declaration("stmt", "s"));
-        //        query.Selected = new Selected("BOOLEAN");
-        //        query.Relations.Add(new Relation("Follows", "5", "1"));
-
-        //        var results = analyzer.Analyze(query);
-
-        //        Assert.Single(results);
-        //        Assert.Equal("False", results[0]);
-        //    }
-
-        //    [Fact]
-        //    public void Analyze_ParentStar_ReturnsAllNestedStatements()
-        //    {
-        //        var ast = CreateSimpleAST();
-        //        var analyzer = new SPAAnalyzer(ast);
-
-        //        var query = new PQLQuery();
-        //        query.Declarations.Add(new Declaration("stmt", "s"));
-        //        query.Selected = new Selected("s");
-        //        query.Relations.Add(new Relation("Parent*", "2", "s"));
-
-        //        var results = analyzer.Analyze(query);
-
-        //        Assert.Equal(2, results.Count);
-        //        Assert.Contains("3", results); // z = 1
-        //        Assert.Contains("4", results); // y = 0
-        //    }
-
-        //    [Fact]
-        //    public void Analyze_FollowsStar_ReturnsAllFollowingInScope()
-        //    {
-        //        var ast = CreateSimpleAST();
-        //        var analyzer = new SPAAnalyzer(ast);
-
-        //        var query = new PQLQuery();
-        //        query.Declarations.Add(new Declaration("stmt", "s"));
-        //        query.Selected = new Selected("s");
-        //        query.Relations.Add(new Relation("Follows*", "1", "s"));
-
-        //        var results = analyzer.Analyze(query);
-
-        //        Assert.Equal(2, results.Count);
-        //        Assert.Contains("2", results); // while(y)
-        //        Assert.Contains("5", results); // x = 10
-        //    }
-
-        //    [Fact]
-        //    public void Analyze_BooleanUses_ReturnsCorrectTruthValue()
-        //    {
-        //        var ast = CreateSimpleAST();
-        //        var analyzer = new SPAAnalyzer(ast);
-
-        //        var query = new PQLQuery();
-        //        query.Declarations.Add(new Declaration("stmt", "s"));
-        //        query.Selected = new Selected("BOOLEAN");
-        //        query.Relations.Add(new Relation("Uses", "2", "y")); // while używa y
-
-        //        var results = analyzer.Analyze(query);
-
-        //        Assert.Single(results);
-        //        Assert.Equal("True", results[0]);
-        //    }
-        //}
-     

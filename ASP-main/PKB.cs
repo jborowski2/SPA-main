@@ -169,7 +169,7 @@ namespace ASP_main
             ComputeFollowsStar();
             ComputeParentStar();
         }
-        private void ComputeFollowsStar()
+        public void ComputeFollowsStar()
         {
             IsFollowsStar = new HashSet<(string, string)>();
 
@@ -594,7 +594,7 @@ namespace ASP_main
             IsNext.Add((from, to));
         }
 
-        private void ComputeNextStar()
+        public void ComputeNextStar()
         {
             foreach (var entry in Next)
             {

@@ -10,31 +10,72 @@ namespace TestProject
     public class TokenTests
     {
         [Fact]
-        public void ToString_ShouldReturnFormattedString()
+        public void Constructor_SetsPropertiesCorrectly()
         {
             // Arrange
-            var token = new Token("TEST", "value", 42);
-            var expected = "Token(TEST, value, Line 42)";
+            var type = "NAME";
+            var value = "x";
+            var lineNumber = 5;
 
             // Act
-            var result = token.ToString();
+            var token = new Token(type, value, lineNumber);
 
             // Assert
-            Assert.Equal(expected, result);
+            Assert.Equal(type, token.Type);
+            Assert.Equal(value, token.Value);
+            Assert.Equal(lineNumber, token.LineNumber);
         }
 
         [Fact]
-        public void ToString_WithNullValue_ShouldHandleGracefully()
+        public void Equals_TokensWithDifferentProperties_AreNotEqual()
         {
             // Arrange
-            var token = new Token("TEST", null, 42);
-            var expected = "Token(TEST, , Line 42)";
+            var t1 = new Token("NAME", "x", 2);
+            var t2 = new Token("NAME", "y", 2);
+            var t3 = new Token("NAME", "x", 3);
+            var t4 = new Token("NUMBER", "x", 2);
+
+            // Act & Assert
+            Assert.False(t1.Equals(t2));
+            Assert.False(t1.Equals(t3));
+            Assert.False(t1.Equals(t4));
+        }
+
+        [Fact]
+        public void ToString_ReturnsUsefulRepresentation()
+        {
+            // Arrange
+            var token = new Token("PLUS", "+", 11);
 
             // Act
-            var result = token.ToString();
+            var str = token.ToString();
 
             // Assert
-            Assert.Equal(expected, result);
+            Assert.Contains("PLUS", str, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("+", str);
+            Assert.Contains("11", str);
+        }
+
+        [Fact]
+        public void Token_DefaultLineNumberIsZero_IfNotSet()
+        {
+            // Arrange & Act
+            var token = new Token("LPAREN", "(", 0);
+
+            // Assert
+            Assert.Equal(0, token.LineNumber);
+        }
+
+        [Fact]
+        public void Token_AllowsNullOrEmptyValue()
+        {
+            // Arrange
+            var token1 = new Token("SEMICOLON", null, 1);
+            var token2 = new Token("RBRACE", "", 2);
+
+            // Act & Assert
+            Assert.Null(token1.Value);
+            Assert.Equal("", token2.Value);
         }
     }
 }
